@@ -1,4 +1,4 @@
-CH 3
+CH 3 AWS Cost Management
 
 1. Understand the importance of implementing AWS Cost allocation tags
     - Cost allocation tags enable organization of resources on the cost allocation report to make it easier for an administrator or organization to categorize or track AWS costs.  There are two distinct types of cost allocation tags:  AWS generated tags and user-defined tags.  AWS generated tags are automatically defined, created, and applied, whereas user-defined tags must be manually defined based on the organization's needs and then applid to the AWS Cost Explorer or cost allocation report.  You must activate both types of tags separately before then can appear in each report.
