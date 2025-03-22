@@ -17,3 +17,11 @@ Exercise 10.1 Registering a Domain and Creating a Hosted Zone
 14. Click Submit
 
 15. Confirmation Email we be sent out
+
+16. In Route 53 Dashboard
+17. On left hand side click Hosted Zones
+18. Click Create Hosted Zone Button
+19. Add a name
+20. Type
+    - Public Hosted Zone
+21. Click Create hosted zone button
