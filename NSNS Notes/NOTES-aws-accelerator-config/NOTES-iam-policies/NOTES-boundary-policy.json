@@ -1,0 +1,72 @@
+// This IAM permissions boundary enforces strong MFA policies and limits user capabilities.
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowListActions",
+      "Effect": "Allow",
+      "Action": [
+        "iam:ListUsers",                      // Allows listing IAM users
+        "iam:ListVirtualMFADevices"           // Allows listing virtual MFA devices
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowUserToCreateVirtualMFADevice",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateVirtualMFADevice"          // Allows user to create a virtual MFA device
+      ],
+      "Resource": "arn:*:iam::*:mfa/*"
+    },
+    {
+      "Sid": "AllowUserToManageTheirOwnMFA",
+      "Effect": "Allow",
+      "Action": [
+        "iam:EnableMFADevice",                // Enables MFA on their own user
+        "iam:GetMFADevice",                   // Gets MFA device details
+        "iam:ListMFADevices",                 // Lists their own MFA devices
+        "iam:ResyncMFADevice"                 // Resynchronizes MFA device
+      ],
+      "Resource": "arn:*:iam::*:user/${aws:username}"  // Only on their own user identity
+    },
+    {
+      "Sid": "AllowUserToDeactivateTheirOwnMFAOnlyWhenUsingMFA",
+      "Effect": "Allow",
+      "Action": [
+        "iam:DeactivateMFADevice"             // Allows MFA deactivation
+      ],
+      "Resource": [
+        "arn:*:iam::*:user/${aws:username}"   // Only their own identity
+      ],
+      "Condition": {
+        "Bool": {
+          "aws:MultiFactorAuthPresent": "true"  // Only allowed if user is authenticated with MFA
+        }
+      }
+    },
+    {
+      "Sid": "BlockMostAccessUnlessSignedInWithMFA",
+      "Effect": "Deny",
+      "NotAction": [
+        "iam:CreateVirtualMFADevice",
+        "iam:EnableMFADevice",
+        "iam:ListMFADevices",
+        "iam:ListUsers",
+        "iam:ListVirtualMFADevices",
+        "iam:ResyncMFADevice"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "BoolIfExists": {
+          "aws:MultiFactorAuthPresent": "false"  // Deny all other actions if user is NOT using MFA
+        }
+      }
+    }
+  ]
+}
+
+// NOTE:
+// This policy enforces that IAM users must use MFA to do almost anything.
+// It encourages good security hygiene while allowing users to self-manage MFA setup.

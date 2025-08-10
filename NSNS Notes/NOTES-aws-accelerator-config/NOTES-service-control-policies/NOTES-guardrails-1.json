@@ -1,0 +1,210 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ConfigRulesStatement",
+      "Effect": "Deny",
+      "Action": [
+        "config:PutConfigRule",
+        "config:DeleteConfigRule",
+        "config:DeleteEvaluationResults",
+        "config:DeleteConfigurationAggregator",
+        "config:PutConfigurationAggregator"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "LambdaStatement",
+      "Effect": "Deny",
+      "Action": [
+        "lambda:AddPermission",
+        "lambda:CreateEventSourceMapping",
+        "lambda:CreateFunction",
+        "lambda:DeleteEventSourceMapping",
+        "lambda:DeleteFunction",
+        "lambda:DeleteFunctionConcurrency",
+        "lambda:PutFunctionConcurrency",
+        "lambda:RemovePermission",
+        "lambda:UpdateEventSourceMapping",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration"
+      ],
+      "Resource": "arn:${PARTITION}:lambda:*:*:function:${ACCELERATOR_PREFIX}-*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "SnsStatement",
+      "Effect": "Deny",
+      "Action": [
+        "sns:AddPermission",
+        "sns:CreateTopic",
+        "sns:DeleteTopic",
+        "sns:RemovePermission",
+        "sns:SetTopicAttributes",
+        "sns:Subscribe",
+        "sns:Unsubscribe"
+      ],
+      "Resource": "arn:${PARTITION}:sns:*:*:aws-accelerator-*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "EbsEncryptionStatement",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:DisableEbsEncryptionByDefault"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "PreventCloudWatchLogsModification",
+      "Effect": "Deny",
+      "Action": [
+        "logs:DisassociateKmsKey",
+        "logs:DeleteLogGroup",
+        "logs:DeleteRetentionPolicy",
+        "logs:AssociateKmsKey",
+        "logs:PutRetentionPolicy",
+        "logs:CreateLogGroup"
+      ],
+      "Resource": [
+        "arn:${PARTITION}:logs:*:*:log-group:aws-accelerator-*",
+        "arn:${PARTITION}:logs:*:*:log-group:/aws/lambda/AWSAccelerator-*"
+      ],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "PreventCloudWatchLogStreamModification",
+      "Effect": "Deny",
+      "Action": [
+        "logs:DeleteLogStream"
+      ],
+      "Resource": [
+        "arn:${PARTITION}:logs:*:*:log-group:aws-accelerator-*:log-stream:*",
+        "arn:${PARTITION}:logs:*:*:log-group:/aws/lambda/AWSAccelerator-*:log-stream:*"
+      ],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    }
+  ]
+}
+
+
+
+##############################################################
+##############################################################
+##############################################################
+ Overall Purpose
+Restrict access to certain high-risk actions across AWS services unless the request comes from an authorized automation or management role.
+
+🎯 Who is Allowed?
+Only IAM roles matching these patterns can perform the restricted actions:
+
+arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*
+
+arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}
+
+arn:${PARTITION}:iam::*:role/cdk-accel-*
+
+These are automation-related roles used by the Landing Zone Accelerator, CDK pipelines, or trusted administrators.
+
+🔐 What Does It Restrict?
+Each section of the "Statement" array defines a set of restricted actions:
+
+1. AWS Config
+json
+Copy
+Edit
+Action: config:PutConfigRule, Delete*, PutConfigurationAggregator
+🔒 Prevents unapproved creation/deletion of Config rules or aggregators, which are critical for compliance monitoring.
+
+2. AWS Lambda
+json
+Copy
+Edit
+Action: lambda:CreateFunction, UpdateFunctionCode, DeleteFunction, etc.
+🔒 Prevents unauthorized Lambda function creation or modification, limiting risk of malicious or misconfigured code execution.
+
+3. Amazon SNS
+json
+Copy
+Edit
+Action: sns:CreateTopic, DeleteTopic, Subscribe, etc.
+🔒 Prevents tampering with SNS topics (which might be used for alerts, notifications, automation triggers).
+
+4. Amazon EC2 – EBS Encryption
+json
+Copy
+Edit
+Action: ec2:DisableEbsEncryptionByDefault
+🔒 Ensures encryption is always enabled by default for new EBS volumes.
+
+5. Amazon CloudWatch Logs – Log Groups
+json
+Copy
+Edit
+Action: logs:DeleteLogGroup, AssociateKmsKey, PutRetentionPolicy, etc.
+🔒 Protects log group configurations—important for audit and security event logging.
+
+6. Amazon CloudWatch Logs – Log Streams
+json
+Copy
+Edit
+Action: logs:DeleteLogStream
+🔒 Prevents deletion of log streams under key log groups, safeguarding visibility into AWS Lambda and Accelerator logs.
+
+🧠 Why Use This?
+These restrictions enforce security best practices and ensure that only automated, approved processes can manage infrastructure components—minimizing human error and insider risk.
+
+
+###############################################################
+##############################################################
+##############################################################

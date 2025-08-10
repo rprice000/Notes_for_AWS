@@ -1,0 +1,107 @@
+homeRegion: us-gov-west-1  # The primary AWS region for LZA deployment and resource control
+enabledRegions:            # Regions where the LZA should operate and enforce governance
+  - us-gov-west-1
+
+managementAccountAccessRole: AWSControlTowerExecution  # IAM role used by LZA to manage accounts via Control Tower
+
+cloudwatchLogRetentionInDays: 3653  # Sets retention period for CloudWatch logs (3653 days ≈ 10 years)
+
+cdkOptions:                         # Settings that control LZA CDK behavior
+  centralizeBuckets: true          # Centralizes S3 buckets (e.g., logs) in dedicated accounts
+  useManagementAccessRole: true    # Allows LZA to use the access role in the management account
+  terminationProtection: true      # Prevents accidental deletion of critical stacks
+
+snsTopics:                         # Defines SNS topics for security notifications
+  deploymentTargets:
+    organizationalUnits:
+      - Root                       # Apply this config to all OUs under Root
+  topics:
+    - name: Security
+      emailAddresses:
+        - aws-accounts+security-alert@intuitivemachines.com  # Email for security alerts
+
+enableOptInRegions: false          # Disables opt-in regions from being used in the LZA
+
+controlTower:                      # Configuration related to AWS Control Tower
+  enable: true                     # Enables Control Tower integration
+  controls: []                     # Optional Control Tower guardrails (none defined yet)
+
+logging:                           # Logging configuration for CloudTrail and session logs
+  account: LogArchive              # Specifies the account to store centralized logs
+  cloudtrail:
+    enable: true                   # Enables organization-wide CloudTrail logging
+    organizationTrail: true        # Use a single trail for the org
+    organizationTrailSettings:     # Org trail settings
+      multiRegionTrail: true       # Captures events across multiple regions
+      globalServiceEvents: true    # Logs global AWS events (e.g., IAM, STS)
+      managementEvents: true       # Logs all management events (e.g., create bucket)
+      s3DataEvents: true           # Logs S3 read/write events
+      lambdaDataEvents: true       # Logs Lambda invoke events
+      sendToCloudWatchLogs: true   # Sends logs to CloudWatch as well as S3
+      apiErrorRateInsight: false   # Disable error rate insights (for now)
+      apiCallRateInsight: false    # Disable API call rate insights
+    accountTrails: []              # (Optional) Custom trails per account
+    lifecycleRules: []             # (Optional) S3 lifecycle rules for trail logs
+
+  sessionManager:                  # AWS SSM Session Manager log settings
+    sendToCloudWatchLogs: true     # Sends session logs to CloudWatch Logs
+    cloudwatchLogs:
+      dynamicPartitioning: dynamic-partitioning/log-filters.json  # Dynamic partitions for log filtering
+    sendToS3: false                # S3 logging is disabled for session logs
+    excludeRegions: []             # (Optional) regions to exclude from logging
+    excludeAccounts: []            # (Optional) accounts to exclude from logging
+    lifecycleRules: []             # (Optional) log bucket lifecycle rules
+    attachPolicyToIamRoles:        # IAM roles to attach session log policies to
+      - EC2-Default-SSM-Instance-Role
+
+  accessLogBucket:                # Configuration for the access log bucket (e.g., for ALBs, S3 access logs)
+    lifecycleRules:               # S3 lifecycle rules to manage storage cost
+      - enabled: true
+        abortIncompleteMultipartUpload: 7
+        expiration: 1000
+        noncurrentVersionExpiration: 1000
+        transitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+        noncurrentVersionTransitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+
+  centralLogBucket:               # Central S3 bucket for all logs
+    s3ResourcePolicyAttachments:
+      - policy: bucket-policies/central-log-bucket.json  # Attaches custom bucket policy from local file
+    lifecycleRules:
+      - enabled: true
+        abortIncompleteMultipartUpload: 7
+        expiration: 1000
+        noncurrentVersionExpiration: 1000
+        transitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+        noncurrentVersionTransitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+
+  elbLogBucket:                   # S3 bucket specifically for ELB access logs
+    lifecycleRules:
+      - enabled: true
+        abortIncompleteMultipartUpload: 7
+        expiration: 1000
+        noncurrentVersionExpiration: 1000
+        transitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+        noncurrentVersionTransitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+
+backup:                           # Optional AWS Backup configuration
+  vaults:
+    - name: BackupVault           # Backup vault name (vault policy config may go elsewhere)
+      deploymentTargets:
+        organizationalUnits:
+          - Root
+
+tags: []                          # (Optional) global tags for all deployed resources
+
+iamRoleSsmParameters: []          # (Optional) parameter store mappings for IAM roles

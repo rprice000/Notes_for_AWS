@@ -1,0 +1,434 @@
+{
+  "Description": "(SO0199-govcloudavm) Landing Zone Accelerator on AWS. Version 1.12.5.",
+  "Resources": {
+    "GovCloudAccountVendingPortfolioEB3BE033": {
+      "Type": "AWS::ServiceCatalog::Portfolio",
+      "Properties": {
+        "DisplayName": "Landing Zone Accelerator on AWS",
+        "ProviderName": "AWS Solutions"
+      },
+      "Metadata": {
+        "aws:cdk:path": "AWSAccelerator-GovCloudAccountVending/GovCloudAccountVendingPortfolio/Resource"
+      }
+    },
+    "GovCloudAccountVendingPortfolioPortfolioProductAssociation3e6b12fbf6573536D3A6": {
+      "Type": "AWS::ServiceCatalog::PortfolioProductAssociation",
+      "Properties": {
+        "PortfolioId": {
+          "Ref": "GovCloudAccountVendingPortfolioEB3BE033"
+        },
+        "ProductId": {
+          "Ref": "GovCloudAccountVendingProduct2B8769D5"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "AWSAccelerator-GovCloudAccountVending/GovCloudAccountVendingPortfolio/PortfolioProductAssociation3e6b12fbf657"
+      }
+    },
+    "GovCloudAccountVendingProduct2B8769D5": {
+      "Type": "AWS::ServiceCatalog::CloudFormationProduct",
+      "Properties": {
+        "Name": "Landing Zone Accelerator on AWS - AWS GovCloud (US) Account Vending",
+        "Owner": "AWS Solutions",
+        "ProvisioningArtifactParameters": [
+          {
+            "Description": "AWS GovCloud (US) Account Vending Product. Create AWS GovCloud (US) accounts. Required inputs are Account name, email and Organization Access Role.",
+            "DisableTemplateValidation": false,
+            "Info": {
+              "LoadTemplateFromURL": "https://s3.amazonaws.com/solutions-reference/landing-zone-accelerator-on-aws/v1.12.5/AWSAccelerator-GovCloudAccountVendingProduct.template"
+            },
+            "Name": "v1.0.0"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "AWSAccelerator-GovCloudAccountVending/GovCloudAccountVendingProduct/Resource"
+      }
+    },
+    "GovCloudAccountVendingFunctionServiceRole3F1EF782": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "AWSAccelerator-GovCloudAccountVending/GovCloudAccountVendingFunction/ServiceRole/Resource"
+      }
+    },
+    "GovCloudAccountVendingFunctionServiceRoleDefaultPolicy02E0FF6C": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "organizations:CreateGovCloudAccount",
+                "organizations:DescribeCreateAccountStatus"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "GovCloudAccountVendingFunctionServiceRoleDefaultPolicy02E0FF6C",
+        "Roles": [
+          {
+            "Ref": "GovCloudAccountVendingFunctionServiceRole3F1EF782"
+          }
+        ]
+      },
+      "Metadata": {
+        "cfn_nag": {
+          "rules_to_suppress": [
+            {
+              "id": "W12",
+              "reason": "IAM policy should not allow * resource."
+            }
+          ]
+        }
+      }
+    },
+    "GovCloudAccountVendingFunctionB10FB00E": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "ZipFile": "/**\n *  Copyright 2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.\n *\n *  Licensed under the Apache License, Version 2.0 (the \"License\"). You may not use this file except in compliance\n *  with the License. A copy of the License is located at\n *\n *      http://www.apache.org/licenses/LICENSE-2.0\n *\n *  or in the 'license' file accompanying this file. This file is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES\n *  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions\n *  and limitations under the License.\n */\n\nconst {\n  OrganizationsClient,\n  CreateGovCloudAccountCommand,\n  DescribeCreateAccountStatusCommand,\n} = require('@aws-sdk/client-organizations');\nconst { ConfiguredRetryStrategy } = require('@aws-sdk/util-retry');\nconst cfn = require('cfn-response');\n\nconst org = new OrganizationsClient({\n  retryStrategy: new ConfiguredRetryStrategy(10, attempt => 100 + attempt * 1000),\n  region: 'us-east-1',\n});\n/**\n * create-govcloud-account - lambda handler\n *\n * @param event\n * @returns cfn-response\n */\n\nexports.handler = async (event, context) => {\n  console.log('Received event:\\n' + JSON.stringify(event, null, 2));\n  try {\n    var acc = event.ResourceProperties.accountName;\n    var em = event.ResourceProperties.emailAddress;\n    var role = event.ResourceProperties.orgAccessRole;\n    let i = 0;\n\n    if (event.RequestType === 'Create') {\n      var accResp = await org.send(new CreateGovCloudAccountCommand({ AccountName: acc, Email: em, RoleName: role }));\n      console.log(JSON.stringify(accResp));\n      var car = accResp.CreateAccountStatus.Id;\n      let accStatR = await org.send(new DescribeCreateAccountStatusCommand({ CreateAccountRequestId: car }));\n      let accStat = accStatR.CreateAccountStatus.State;\n      while (accStat === 'IN_PROGRESS' && i < 40) {\n        await new Promise(resolve => setTimeout(resolve, 15e3));\n        accStatR = await org.send(new DescribeCreateAccountStatusCommand({ CreateAccountRequestId: car }));\n        accStat = accStatR.CreateAccountStatus.State;\n        i++;\n        // print responses to help troubleshoot\n        console.log(`Attempt: ${i} of 40`);\n        console.log(JSON.stringify(accStatR));\n        console.log(accStat);\n      }\n      if (i === 40) {\n        console.log('Timed out');\n        return await cfn.send(event, context, 'FAILED');\n      } else if (accStat === 'FAILED') {\n        var physicalResourceId = accStatR.CreateAccountStatus.FailureReason;\n        return await cfn.send(event, context, 'FAILED', physicalResourceId);\n      } else if (accStat === 'SUCCEEDED') {\n        var responseData = {\n          AccountId: accStatR.CreateAccountStatus.AccountId,\n          GovCloudAccountId: accStatR.CreateAccountStatus.GovCloudAccountId,\n        };\n        return await cfn.send(event, context, 'SUCCESS', responseData);\n      }\n    } else if (event.RequestType === 'Delete' || event.RequestType === 'Update') {\n      return await cfn.send(event, context, 'SUCCESS');\n    }\n  } catch (err) {\n    let errMsg = `${err.name}:\\n${err.message}`;\n    let responseData = { Error: errMsg };\n    console.log(errMsg);\n\n    return await cfn.send(event, context, 'FAILED', responseData);\n  }\n};\n"
+        },
+        "Description": "Create AWS GovCloud (US) Accounts",
+        "FunctionName": "AWSAccelerator-GovCloudAccountVending",
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "GovCloudAccountVendingFunctionServiceRole3F1EF782",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs20.x",
+        "Timeout": 900
+      },
+      "DependsOn": [
+        "GovCloudAccountVendingFunctionServiceRoleDefaultPolicy02E0FF6C",
+        "GovCloudAccountVendingFunctionServiceRole3F1EF782"
+      ],
+      "Metadata": {
+        "cfn_nag": {
+          "rules_to_suppress": [
+            {
+              "id": "W58",
+              "reason": "CloudWatch Logs are enabled in AWSLambdaBasicExecutionRole"
+            },
+            {
+              "id": "W89",
+              "reason": "This function supports infrastructure deployment and is not deployed inside a VPC."
+            },
+            {
+              "id": "W92",
+              "reason": "This function supports infrastructure deployment and does not require setting ReservedConcurrentExecutions."
+            }
+          ]
+        }
+      }
+    },
+    "CDKMetadata": {
+      "Type": "AWS::CDK::Metadata",
+      "Properties": {
+        "Analytics": "v2:deflate64:H4sIAAAAAAAA/22OzQrCQAyEn8X7NmpB8SoFz6U+gKTZrUS3G9gfRZa+u7Sr4MHTfJNMhtSw3R1gs8JnqEjfK8s95HNEuit8hksOxj+YDGFEK1fIrfg4iGVRzeD+m9aLThSPIQgxRhanGitJn8SPi/0E5qO/i0lZHHuNkE/JUSkY3JcnxThC7sSaebxoK5bpVb6YaZpUZ4IkTyXzw404zaXHiTZwC+vH9gD1BvarW2CufHKRRwNd0Teu2jObIQEAAA=="
+      },
+      "Metadata": {
+        "aws:cdk:path": "AWSAccelerator-GovCloudAccountVending/CDKMetadata/Default"
+      },
+      "Condition": "CDKMetadataAvailable"
+    }
+  },
+  "Conditions": {
+    "CDKMetadataAvailable": {
+      "Fn::Or": [
+        {
+          "Fn::Or": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "af-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-east-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-northeast-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-northeast-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-northeast-3"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-south-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-southeast-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-southeast-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-southeast-3"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Or": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-southeast-4"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ca-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ca-west-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "cn-north-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "cn-northwest-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-central-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-north-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-south-2"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Or": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-west-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-west-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-west-3"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "il-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "me-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "me-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "sa-east-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-east-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-east-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-west-1"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::Region"
+            },
+            "us-west-2"
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,55 @@
+=== Configure network-config.yaml
+
+This document sets the initial configuration for the *network-config.yaml* file.  Configuration of networking (ie- Communication between VPCs and Ingress/Egress to Internet are discussed later in *Configure Network* section)
+
+[start=1]
+. Open the *network-config.yaml* file
+. At the top of the file, add *homeRegion: &HOME_REGION us-gov-west-1* above *defaultVPC*
+. Change *defaultVpc.delete* to *true*
+. Configure the *endpointPolicies* configuration with the following:
+[source,yaml]
+----
+endpointPolicies:
+  - name: Default
+    document: vpc-endpoint-policies/default.json
+  - name: Ec2
+    document: vpc-endpoint-policies/ec2.json
+----
+
+[start=5]
+. Create a file called *vpc-endpoint-policies/default.json* with the following contents:
+[source,json]
+----
+{
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "*",
+            "Resource": "*"
+        }
+    ]
+  }
+----
+
+[start=6]
+. Create a file called *vpc-endpoint-policies/ec2.json* with the following contents:
+[source,json]
+----
+{
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "ec2:*",
+            "Resource": "*"
+        }
+    ]
+  }
+----
+
+[start=7]
+. Save and close the file
+
+
+This completes the initial configuration of the *network-config.yaml* file.

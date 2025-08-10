@@ -1,0 +1,19 @@
+description: Associate AWS IAM Instance Profile to EC2 Instance  # Describes the purpose of the document
+schemaVersion: "0.3"  # Defines the version of the SSM Automation document schema
+assumeRole: "{{ AutomationAssumeRole }}"  # Specifies the IAM role that the automation will assume
+parameters:  # Parameters expected when executing this automation
+  IamInstanceProfile:
+    type: String  # The name of the IAM instance profile to attach
+  InstanceId:
+    type: String  # The ID of the EC2 instance to which the profile will be attached
+  AutomationAssumeRole:
+    type: String  # The IAM role used by SSM to perform automation steps
+mainSteps:  # Main steps of the automation document
+  - name: associateIamProfile  # Name of the step
+    action: "aws:executeAwsApi"  # Indicates the step uses a direct AWS API call
+    inputs:
+      Service: ec2  # Target AWS service
+      Api: associate_iam_instance_profile  # API operation to execute
+      IamInstanceProfile:
+        Name: "{{ IamInstanceProfile }}"  # Parameter for the IAM profile name
+      InstanceId: "{{ InstanceId }}"  # Parameter for the EC2 instance ID

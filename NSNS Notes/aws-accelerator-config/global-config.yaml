@@ -1,0 +1,99 @@
+homeRegion: us-gov-west-1
+enabledRegions:
+  - us-gov-west-1
+managementAccountAccessRole: AWSControlTowerExecution
+cloudwatchLogRetentionInDays: 3653
+cdkOptions:
+  centralizeBuckets: true
+  useManagementAccessRole: true
+terminationProtection: true
+# inserted snsTopics
+snsTopics:
+  deploymentTargets:
+    organizationalUnits:
+      - Root
+  topics:
+    - name: Security
+      emailAddresses:
+        - aws-accounts+security-alert@intuitivemachines.com
+# update DL to include Aiden        
+enableOptInRegions: false
+controlTower:
+  enable: true
+  controls: []
+logging:
+  account: LogArchive
+  cloudtrail:
+    # set to true to enable CloudTrail logging
+    enable: true
+    organizationTrail: true
+    organizationTrailSettings:
+      multiRegionTrail: true
+      globalServiceEvents: true
+      managementEvents: true
+      s3DataEvents: true
+      lambdaDataEvents: true
+      sendToCloudWatchLogs: true
+      apiErrorRateInsight: false
+      apiCallRateInsight: false
+    accountTrails: []
+    lifecycleRules: []
+  sessionManager:
+    sendToCloudWatchLogs: true
+    cloudwatchLogs:
+      # added dynamic partitioning for session manager logs
+      dynamicPartitioning: dynamic-partitioning/log-filters.json
+    sendToS3: false
+    excludeRegions: []
+    excludeAccounts: []
+    lifecycleRules: []
+    attachPolicyToIamRoles: 
+      - EC2-Default-SSM-Instance-Role
+  # added access log bucket section
+  accessLogBucket:
+    lifecycleRules:
+      - enabled: true
+        abortIncompleteMultipartUpload: 7
+        expiration: 1000
+        noncurrentVersionExpiration: 1000
+        transitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+        noncurrentVersionTransitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+  centralLogBucket:
+    s3ResourcePolicyAttachments:
+      - policy: bucket-policies/central-log-bucket.json
+    lifecycleRules:
+      - enabled: true
+        abortIncompleteMultipartUpload: 7
+        expiration: 1000
+        noncurrentVersionExpiration: 1000
+        transitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+        noncurrentVersionTransitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+  elbLogBucket:
+    lifecycleRules:
+      - enabled: true
+        abortIncompleteMultipartUpload: 7
+        expiration: 1000
+        noncurrentVersionExpiration: 1000
+        transitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+        noncurrentVersionTransitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+# added backup vault section
+backup:
+  vaults:
+    - name: BackupVault
+      deploymentTargets:
+        organizationalUnits:
+          - Root            
+tags: []
+iamRoleSsmParameters: []

@@ -1,0 +1,44 @@
+providers: []
+# added policySets section
+policySets:
+  - deploymentTargets:
+      organizationalUnits:
+        - Root
+    policies:
+      - name: Default-Boundary-Policy
+        policy: iam-policies/boundary-policy.json
+# added roleSets section
+roleSets:
+  - deploymentTargets:
+      organizationalUnits:
+        - Root
+    roles:
+      - name: EC2-Default-SSM-Instance-Role
+        instanceProfile: true
+        assumedBy:
+          - type: service
+            principal: ec2.amazonaws.com
+        policies:
+          awsManaged:
+            - AmazonSSMManagedInstanceCore
+            - AmazonSSMDirectoryServiceAccess
+            - CloudWatchAgentServerPolicy
+      - name: Backup-Role
+        assumedBy:
+          - type: service
+            principal: backup.amazonaws.com
+        policies:
+          awsManaged:
+            - service-role/AWSBackupServiceRolePolicyForBackup
+            - service-role/AWSBackupServiceRolePolicyForRestores
+# added groupSets section
+groupSets:
+  - deploymentTargets:
+      organizationalUnits:
+        - Root
+    groups:
+      - name: Administrators
+        policies:
+          awsManaged:
+            - AdministratorAccess
+userSets: []

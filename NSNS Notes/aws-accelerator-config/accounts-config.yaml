@@ -1,0 +1,38 @@
+mandatoryAccounts:
+  - name: Management
+    description: >-
+      The management (primary) account. Do not change the name field for this
+      mandatory account. Note, the account name key does not need to match the
+      AWS account name.
+    email: aws-root-mgt@intuitivemachines.com
+    organizationalUnit: Root
+    warm: false
+  - name: LogArchive
+    description: >-
+      The log archive account. Do not change the name field for this mandatory
+      account. Note, the account name key does not need to match the AWS account
+      name.
+    email: aws-accounts+logarchivegc@intuitivemachines.com
+    organizationalUnit: Security
+    warm: false
+  - name: Audit
+    description: >-
+      The security audit account (also referred to as the audit account). Do not
+      change the name field for this mandatory account. Note, the account name
+      key does not need to match the AWS account name.
+    email: aws-accounts+auditgc@intuitivemachines.com
+    organizationalUnit: Security
+    warm: false
+workloadAccounts: 
+  - name: SharedServices
+    description: Shared services account for GovCloud
+    email: aws-accounts+sharedsvcsgc@intuitivemachines.com
+    organizationalUnit: Infrastructure
+  - name: Network
+    description: Network account for GovCloud
+    email: aws-accounts+networkgc@intuitivemachines.com
+    organizationalUnit: Infrastructure
+  - name: SandboxLZAGC
+    description: SandboxLZAGC account for GovCloud
+    email: aws-account+sandboxlzagc@intuitivemachines.com
+    organizationalUnit: LZA-Lab

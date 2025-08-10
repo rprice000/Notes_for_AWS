@@ -1,0 +1,20 @@
+# Sets the home region for the landing zone deployment
+homeRegion: &HOME_REGION us-gov-west-1
+
+# Controls whether to delete default VPCs created by AWS
+defaultVpc:
+  delete: true  # If true, deletes the default VPCs in all accounts/regions unless excluded
+  excludeAccounts: []  # List of accounts to exclude from default VPC deletion
+
+# Placeholder for Transit Gateways (none defined yet)
+transitGateways: []
+
+# Defines custom endpoint policies for VPC endpoints
+endpointPolicies:
+  - name: Default  # Name of the endpoint policy
+    document: vpc-endpoint-policies/default.json  # Path to the policy document
+  - name: Ec2  # Another endpoint policy named 'Ec2'
+    document: vpc-endpoint-policies/ec2.json  # Path to the EC2 endpoint policy document
+
+# Placeholder for VPC definitions (none defined yet)
+vpcs: []

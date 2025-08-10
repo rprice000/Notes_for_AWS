@@ -1,0 +1,13 @@
+// This file maps CloudWatch Log Groups to S3 path prefixes for dynamic partitioning.
+// It is used by LZA to organize exported log data in your central S3 log bucket.
+
+[
+  {
+    "logGroupPattern": "/AWSAccelerator-SecurityHub",  // Matches CloudWatch logs from AWS Security Hub
+    "s3Prefix": "security-hub"                         // Stores them in the 'security-hub/' prefix in S3
+  }
+]
+
+// NOTE:
+// You can expand this list with additional logGroupPattern and s3Prefix pairs,
+// for example to route logs from GuardDuty, Config, or CloudTrail into separate folders in S3.

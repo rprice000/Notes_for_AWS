@@ -1,0 +1,13 @@
+# added &homeRegion anchor
+homeRegion: &HOME_REGION us-gov-west-1
+defaultVpc:
+  delete: true
+  excludeAccounts: []
+transitGateways: []
+# added endpointPolicies section
+endpointPolicies:
+  - name: Default
+    document: vpc-endpoint-policies/default.json
+  - name: Ec2
+    document: vpc-endpoint-policies/ec2.json
+vpcs: []

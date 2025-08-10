@@ -1,0 +1,49 @@
+# This document disables public SSH (IPv4 and IPv6) access to a specified security group.
+description: Disable SSH and RDP ports opened to IP address specified, or to all addresses if no address is specified.
+schemaVersion: "0.3"  # Version of the Automation document schema
+assumeRole: "{{ AutomationAssumeRole }}"  # IAM role used by SSM to perform automation
+
+parameters:
+  GroupId:
+    type: String
+    description: (Optional) Security Group ID
+    # allowedPattern: Regular expression to validate a security group ID
+  IpAddressToBlock:
+    type: String
+    description: (Optional) Additional IPv4 or IPv6 address to block access from (e.g., 1.2.3.4/32)
+    allowedPattern: Pattern to validate IPv4/IPv6 format
+    default: ""
+  AutomationAssumeRole:
+    type: String
+    description: (Optional) IAM role ARN for executing this automation
+    default: ""
+
+mainSteps:
+  - name: DisableSSHFromIpV4
+    action: aws:executeAwsApi
+    inputs:
+      Service: ec2
+      Api: RevokeSecurityGroupIngress  # API to remove security group ingress rule
+      GroupId: "{{GroupId}}"
+      IpPermissions:
+        - IpProtocol: tcp
+          FromPort: 22  # SSH port
+          ToPort: 22
+          IpRanges:
+            - CidrIp: 0.0.0.0/0  # Denies SSH from any IPv4 address
+    onFailure: Continue  # Proceed even if this step fails
+
+  - name: DisableSSHFromIpV6
+    action: aws:executeAwsApi
+    inputs:
+      Service: ec2
+      Api: RevokeSecurityGroupIngress
+      GroupId: "{{GroupId}}"
+      IpPermissions:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          Ipv6Ranges:
+            - CidrIpv6: "::/0"  # Denies SSH from any IPv6 address
+    isEnd: true
+    onFailure: Continue

@@ -1,0 +1,619 @@
+# added home_region anchor 
+homeRegion: &HOME_REGION us-gov-west-1  # The primary AWS region for centralized services
+centralSecurityServices:
+  delegatedAdminAccount: Audit  # The account that manages central security services like Macie, GuardDuty
+  ebsDefaultVolumeEncryption:  # Configures EBS default encryption settings
+    enable: true              # set to true to enable EBS default volume encryption
+    excludeRegions: []
+  s3PublicAccessBlock:  # Prevents public access to S3 buckets
+    enable: true              # set to true to enable S3 public access block
+    excludeAccounts: []
+  scpRevertChangesConfig:  # Enables auto-revert for changes to Service Control Policies
+    enable: true           # set to true to enable SCP revert changes config
+  snsSubscriptions: # Follow up on this in documentation.  # Email notifications based on alert severity
+  - level: High
+    email: aws-accounts+security-high@intuitivemachines.com
+  - level: Medium
+    email: aws-accounts+security-medium@intuitivemachines.com
+  - level: Low
+    email: aws-accounts+security-low@intuitivemachines.com
+  macie:  # Enables Macie for sensitive data discovery
+    enable: false
+    excludeRegions: []
+    policyFindingsPublishingFrequency: FIFTEEN_MINUTES
+    publishSensitiveDataFindings: false
+  guardduty:  # Enables GuardDuty for threat detection
+    enable: true                        # set to true to enable GuardDuty
+    excludeRegions: []
+    s3Protection:
+      enable: true                      # set to true to enable S3 protection
+      excludeRegions: []
+    exportConfiguration:
+      enable: true                      # set to true to enable GuardDuty export configuration
+      overrideExisting: true            # set to true to override existing export configuration
+      destinationType: S3
+      exportFrequency: FIFTEEN_MINUTES
+  securityHub:  # Enables Security Hub and its compliance standards
+    enable: true                     # set to true to enable Security Hub
+    enableDefaultStandards: true
+    regionAggregation: false
+    excludeRegions: []
+    # added standards configuration
+    standards:
+    # for enum of names, see: https://awslabs.github.io/landing-zone-accelerator-on-aws/classes/_aws_accelerator_config.SecurityHubStandardConfig.html#name
+    # add NIST 800-53r5
+    - name: NIST Special Publication 800-53 Revision 5
+      # https://docs.aws.amazon.com/securityhub/latest/userguide/nist-standard.html
+      enable: true
+      controlstoDisable: [ ]
+      # disable AWS Foundational Security Best Practices v1.0.0
+    - name: AWS Foundational Security Best Practices v1.0.0
+      # https://docs.aws.amazon.com/securityhub/latest/userguide/fsbp-standard.html
+      enable: false
+      controlstoDisable: [ ]
+      # disable CIS AWS Foundations Benchmark v1.2.0
+    - name: CIS AWS Foundations Benchmark v1.2.0
+      # https://docs.aws.amazon.com/securityhub/latest/userguide/cis-aws-foundations-benchmark.html
+      enable: false
+      controlstoDisable: [ ]
+      # disable CIS AWS Foundations Benchmark v1.4.0
+    - name: CIS AWS Foundations Benchmark v1.4.0
+      # https://docs.aws.amazon.com/securityhub/latest/userguide/cis-aws-foundations-benchmark.html
+      enable: false
+      controlstoDisable: [ ]
+      # disable PCI DSS v3.2.1
+    - name: PCI DSS v3.2.1
+      # https://docs.aws.amazon.com/securityhub/latest/userguide/pci-standard.html
+      enable: false
+      controlstoDisable: [ ]
+  ssmAutomation:  # SSM automation documents shared across org units
+    excludeRegions: []
+    documentSets:
+      - shareTargets:
+          organizationalUnits:
+            - Root
+        documents:
+          # Calls the AWS CLI to enable access logs on a specified ELB
+          - name: SSM-ELB-Enable-Logging
+            template: ssm-documents/ssm-elb-enable-logging.yaml
+          # Enables S3 encryption using KMS
+          - name: Put-S3-Encryption
+            template: ssm-documents/s3-encryption.yaml
+          # Attaches instance profiles to an EC2 instance
+          - name: Attach-IAM-Instance-Profile
+            template: ssm-documents/attach-iam-instance-profile.yaml
+          # Attaches Aws IAM Managed Policy to IAM Role
+          - name: Attach-IAM-Role-Policy
+            template: ssm-documents/attach-iam-role-policy.yaml
+          # Disables SSH to security group
+          - name: Disable-Public-SSH
+            template: ssm-documents/disable-public-ssh.yaml
+          # Enables IMDSV2
+          - name: Configure-IMDSV2
+            template: ssm-documents/configure_imdsv2.yaml
+          # Remove open sec groups that not open ports
+          - name: remove-open-security-groups
+            template: ssm-documents/remove-open-security-group.yaml
+accessAnalyzer:  # Enables IAM Access Analyzer for external access detection
+  enable: true                  # set to true to enable Access Analyzer
+iamPasswordPolicy:  # IAM password policy enforcing secure credentials
+  allowUsersToChangePassword: true
+  hardExpiry: false
+  requireUppercaseCharacters: true
+  requireLowercaseCharacters: true
+  requireSymbols: true
+  requireNumbers: true
+  minimumPasswordLength: 14
+  passwordReusePrevention: 24
+  maxPasswordAge: 90
+awsConfig:  # Enables AWS Config and defines compliance rules
+  enableConfigurationRecorder: true         # set to true to enable AWS Config
+  enableDeliveryChannel: true         # set to true to enable AWS Config
+  # added RuleSets configuration
+  ruleSets:
+  - deploymentTargets:
+      organizationalUnits:
+        - Root
+    rules:
+      #############################################################################
+      # Enabling additional config rules not implemented through AWS Security Hub #
+      #############################################################################
+      - name: accelerator-iam-user-group-membership-check
+        complianceResourceTypes:
+          - AWS::IAM::User
+        identifier: IAM_USER_GROUP_MEMBERSHIP_CHECK
+      - name: accelerator-securityhub-enabled
+        identifier: SECURITYHUB_ENABLED
+      - name: accelerator-cloudtrail-enabled
+        identifier: CLOUD_TRAIL_ENABLED
+      - name: accelerator-cloudtrail-s3-dataevents-enabled
+        identifier: CLOUDTRAIL_S3_DATAEVENTS_ENABLED
+      - name: accelerator-emr-kerberos-enabled
+        identifier: EMR_KERBEROS_ENABLED
+      - name: accelerator-iam-group-has-users-check
+        complianceResourceTypes:
+          - AWS::IAM::Group
+        identifier: IAM_GROUP_HAS_USERS_CHECK
+      - name: accelerator-s3-bucket-policy-grantee-check
+        complianceResourceTypes:
+          - AWS::S3::Bucket
+        identifier: S3_BUCKET_POLICY_GRANTEE_CHECK
+      # Note, included in Security Hub AFBP slightly different with ports 80 and 443
+      - name: accelerator-internet-gateway-authorized-vpc-only
+        complianceResourceTypes:
+          - AWS::EC2::InternetGateway
+        identifier: INTERNET_GATEWAY_AUTHORIZED_VPC_ONLY
+      - name: accelerator-iam-no-inline-policy-check
+        complianceResourceTypes:
+          - AWS::IAM::User
+          - AWS::IAM::Role
+          - AWS::IAM::Group
+        identifier: IAM_NO_INLINE_POLICY_CHECK
+      - name: accelerator-cloudwatch-log-group-encrypted
+        identifier: CLOUDWATCH_LOG_GROUP_ENCRYPTED
+      - name: accelerator-ec2-instance-detailed-monitoring-enabled
+        complianceResourceTypes:
+          - AWS::EC2::Instance
+        identifier: EC2_INSTANCE_DETAILED_MONITORING_ENABLED
+      - name: accelerator-ec2-volume-inuse-check
+        inputParameters:
+          deleteOnTermination: "TRUE"
+        complianceResourceTypes:
+          - AWS::EC2::Volume
+        identifier: EC2_VOLUME_INUSE_CHECK
+      - name: accelerator-cloudtrail-security-trail-enabled
+        identifier: CLOUDTRAIL_SECURITY_TRAIL_ENABLED
+      - name: accelerator-guardduty-non-archived-findings
+        inputParameters:
+          daysHighSev: "1"
+          daysLowSev: "30"
+          daysMediumSev: "7"
+        identifier: GUARDDUTY_NON_ARCHIVED_FINDINGS
+      - name: accelerator-sagemaker-endpoint-configuration-kms-key-configured
+        identifier: SAGEMAKER_ENDPOINT_CONFIGURATION_KMS_KEY_CONFIGURED
+      - name: accelerator-sagemaker-notebook-instance-kms-key-configured
+        identifier: SAGEMAKER_NOTEBOOK_INSTANCE_KMS_KEY_CONFIGURED
+      - name: accelerator-dynamodb-table-encrypted-kms
+        complianceResourceTypes:
+          - AWS::DynamoDB::Table
+        identifier: DYNAMODB_TABLE_ENCRYPTED_KMS
+
+      # NIST 800-53-rev5 Conformance Pack - Additional 15
+      - name: accelerator-account-part-of-organizations
+        identifier: ACCOUNT_PART_OF_ORGANIZATIONS
+      - name: accelerator-dynamodb-throughput-limit-check
+        identifier: DYNAMODB_THROUGHPUT_LIMIT_CHECK
+      - name: accelerator-ebs-optimized-instance
+        complianceResourceTypes:
+          - AWS::EC2::Instance
+        identifier: EBS_OPTIMIZED_INSTANCE
+      - name: accelerator-no-unrestricted-route-to-igw
+        complianceResourceTypes:
+          - AWS::EC2::RouteTable
+        identifier: NO_UNRESTRICTED_ROUTE_TO_IGW
+      - name: accelerator-secretsmanager-using-cmk
+        complianceResourceTypes:
+          - AWS::SecretsManager::Secret
+        identifier: SECRETSMANAGER_USING_CMK
+
+  # Optional Config rules to check for resources protected by backups.
+  - deploymentTargets:
+      organizationalUnits: []
+    rules:
+      - name: accelerator-aurora-resources-protected-by-backup-plan
+        complianceResourceTypes:
+          - AWS::RDS::DBCluster
+        identifier: AURORA_RESOURCES_PROTECTED_BY_BACKUP_PLAN
+      - name: accelerator-backup-plan-min-frequency-and-min-retention-check
+        complianceResourceTypes:
+          - AWS::Backup::BackupPlan
+        identifier: BACKUP_PLAN_MIN_FREQUENCY_AND_MIN_RETENTION_CHECK
+      - name: accelerator-backup-recovery-point-encrypted
+        complianceResourceTypes:
+          - AWS::Backup::RecoveryPoint
+        identifier: BACKUP_RECOVERY_POINT_ENCRYPTED
+      - name: accelerator-backup-recovery-point-manual-deletion-disabled
+        complianceResourceTypes:
+          - AWS::Backup::BackupVault
+        identifier: BACKUP_RECOVERY_POINT_MANUAL_DELETION_DISABLED
+      - name: accelerator-ec2-resources-protected-by-backup-plan
+        complianceResourceTypes:
+          - AWS::EC2::Instance
+        identifier: EC2_RESOURCES_PROTECTED_BY_BACKUP_PLAN
+# added entire configuration for CloudWatch metrics and alarms
+cloudWatch:  # Configures CloudWatch metrics and alarms based on CIS benchmarks
+  metricSets:
+    - regions:
+        - *HOME_REGION
+      #####################################
+      # With landing zone version 3.0, AWS Control Tower now supports organization-level AWS CloudTrail trails.                                          #
+      # Going forward from landing zone 3.0, AWS Control Tower no longer will support account-level trails that AWS manages.                             #
+      # If your environment runs on prior version (3.0) of landing zone, you can change deployment targets for the metrics to Root organizational units  #
+      # Metrics deployment target should be management account for environment with landing zone version 3.0                                             #
+      # Please refer https://docs.aws.amazon.com/controltower/latest/userguide/2022-all.html#version-3.0 for more information                            #
+      #####################################
+      deploymentTargets:
+        accounts:
+          - Management
+      metrics:
+        # CIS 1.1 – Avoid the use of the "root" account
+        - filterName: RootAccountMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs # change the name of log group
+          filterPattern: '{$.userIdentity.type="Root" && $.userIdentity.invokedBy NOT EXISTS && $.eventType !="AwsServiceEvent"}'
+          metricNamespace: LogMetrics
+          metricName: RootAccount
+          metricValue: "1"
+        # CIS 3.1 – Ensure a log metric filter and alarm exist for unauthorized API calls
+        - filterName: UnauthorizedAPICallsMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: '{($.errorCode="*UnauthorizedOperation") || ($.errorCode="AccessDenied*")}'
+          metricNamespace: LogMetrics
+          metricName: UnauthorizedAPICalls
+          metricValue: "1"
+        # CIS 3.2 – Ensure a log metric filter and alarm exist for AWS Management Console sign-in without MFA
+        - filterName: ConsoleSigninWithoutMFAMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: '{($.eventName = "ConsoleLogin") && ($.additionalEventData.MFAUsed != "Yes") && ($.userIdentity.type = "IAMUser") && ($.responseElements.ConsoleLogin = "Success")}'
+          metricNamespace: LogMetrics
+          metricName: ConsoleSigninWithoutMFA
+          metricValue: "1"
+        # CIS 3.3 – Ensure a log metric filter and alarm exist for usage of "root" account
+        - filterName: MetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: '{$.userIdentity.type="Root" && $.userIdentity.invokedBy NOT EXISTS && $.eventType !="AwsServiceEvent"}'
+          metricNamespace: LogMetrics
+          metricName: RootAccountUsage
+          metricValue: "1"
+        # CIS 3.4 – Ensure a log metric filter and alarm exist for IAM policy changes
+        - filterName: IAMPolicyChangesMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: "{($.eventName=DeleteGroupPolicy) || ($.eventName=DeleteRolePolicy) || ($.eventName=DeleteUserPolicy) || ($.eventName=PutGroupPolicy) || ($.eventName=PutRolePolicy) || ($.eventName=PutUserPolicy) || ($.eventName=CreatePolicy) || ($.eventName=DeletePolicy) || ($.eventName=CreatePolicyVersion) || ($.eventName=DeletePolicyVersion) || ($.eventName=AttachRolePolicy) || ($.eventName=DetachRolePolicy) || ($.eventName=AttachUserPolicy) || ($.eventName=DetachUserPolicy) || ($.eventName=AttachGroupPolicy) || ($.eventName=DetachGroupPolicy)}"
+          metricNamespace: LogMetrics
+          metricName: IAMPolicyChanges
+          metricValue: "1"
+        # CIS 3.5 – Ensure a log metric filter and alarm exist for CloudTrail configuration changes
+        - filterName: CloudTrailChangesMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: "{($.eventName=CreateTrail) || ($.eventName=UpdateTrail) || ($.eventName=DeleteTrail) || ($.eventName=StartLogging) || ($.eventName=StopLogging)}"
+          metricNamespace: LogMetrics
+          metricName: CloudTrailChanges
+          metricValue: "1"
+        # CIS 3.6 – Ensure a log metric filter and alarm exist for AWS Management Console authentication failures
+        - filterName: ConsoleAuthenticationFailureMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: '{($.eventName=ConsoleLogin) && ($.errorMessage="Failed authentication")}'
+          metricNamespace: LogMetrics
+          metricName: ConsoleAuthenticationFailure
+          metricValue: "1"
+        # CIS 3.7 – Ensure a log metric filter and alarm exist for disabling or scheduled deletion of customer created CMKs
+        - filterName: DisableOrDeleteCMKMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: "{($.eventSource=kms.amazonaws.com) && (($.eventName=DisableKey) || ($.eventName=ScheduleKeyDeletion))}"
+          metricNamespace: LogMetrics
+          metricName: DisableOrDeleteCMK
+          metricValue: "1"
+        # CIS 3.8 – Ensure a log metric filter and alarm exist for S3 bucket policy changes
+        - filterName: S3BucketPolicyChangesMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: "{($.eventSource=s3.amazonaws.com) && (($.eventName=PutBucketAcl) || ($.eventName=PutBucketPolicy) || ($.eventName=PutBucketCors) || ($.eventName=PutBucketLifecycle) || ($.eventName=PutBucketReplication) || ($.eventName=DeleteBucketPolicy) || ($.eventName=DeleteBucketCors) || ($.eventName=DeleteBucketLifecycle) || ($.eventName=DeleteBucketReplication))}"
+          metricNamespace: LogMetrics
+          metricName: S3BucketPolicyChanges
+          metricValue: "1"
+        # CIS 3.9 – Ensure a log metric filter and alarm exist for AWS Config configuration changes
+        - filterName: AWSConfigChangesMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: "{($.eventSource=config.amazonaws.com) && (($.eventName=StopConfigurationRecorder) || ($.eventName=DeleteDeliveryChannel) || ($.eventName=PutDeliveryChannel) || ($.eventName=PutConfigurationRecorder))}"
+          metricNamespace: LogMetrics
+          metricName: AWSConfigChanges
+          metricValue: "1"
+        # CIS 3.10 – Ensure a log metric filter and alarm exist for security group changes
+        - filterName: SecurityGroupChangesMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: "{($.eventName=AuthorizeSecurityGroupIngress) || ($.eventName=AuthorizeSecurityGroupEgress) || ($.eventName=RevokeSecurityGroupIngress) || ($.eventName=RevokeSecurityGroupEgress) || ($.eventName=CreateSecurityGroup) || ($.eventName=DeleteSecurityGroup)}"
+          metricNamespace: LogMetrics
+          metricName: SecurityGroupChanges
+          metricValue: "1"
+        # CIS 3.11 – Ensure a log metric filter and alarm exist for changes to Network Access Control Lists (NACL)
+        - filterName: NetworkACLChangesMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: "{($.eventName=CreateNetworkAcl) || ($.eventName=CreateNetworkAclEntry) || ($.eventName=DeleteNetworkAcl) || ($.eventName=DeleteNetworkAclEntry) || ($.eventName=ReplaceNetworkAclEntry) || ($.eventName=ReplaceNetworkAclAssociation)}"
+          metricNamespace: LogMetrics
+          metricName: NetworkACLChanges
+          metricValue: "1"
+        # CIS 3.12 – Ensure a log metric filter and alarm exist for changes to network gateways
+        - filterName: NetworkGatewayChangesMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: "{($.eventName=CreateCustomerGateway) || ($.eventName=DeleteCustomerGateway) || ($.eventName=AttachInternetGateway) || ($.eventName=CreateInternetGateway) || ($.eventName=DeleteInternetGateway) || ($.eventName=DetachInternetGateway)}"
+          metricNamespace: LogMetrics
+          metricName: NetworkGatewayChanges
+          metricValue: "1"
+        # CIS 3.13 – Ensure a log metric filter and alarm exist for route table changes
+        - filterName: RouteTableChangesMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: "{($.eventName=CreateRoute) || ($.eventName=CreateRouteTable) || ($.eventName=ReplaceRoute) || ($.eventName=ReplaceRouteTableAssociation) || ($.eventName=DeleteRouteTable) || ($.eventName=DeleteRoute) || ($.eventName=DisassociateRouteTable)}"
+          metricNamespace: LogMetrics
+          metricName: RouteTableChanges
+          metricValue: "1"
+        # CIS 3.14 – Ensure a log metric filter and alarm exist for VPC changes
+        - filterName: VPCChangesMetricFilter
+          logGroupName: aws-accelerator-cloudtrail-logs
+          filterPattern: "{($.eventName=CreateVpc) || ($.eventName=DeleteVpc) || ($.eventName=ModifyVpcAttribute) || ($.eventName=AcceptVpcPeeringConnection) || ($.eventName=CreateVpcPeeringConnection) || ($.eventName=DeleteVpcPeeringConnection) || ($.eventName=RejectVpcPeeringConnection) || ($.eventName=AttachClassicLinkVpc) || ($.eventName=DetachClassicLinkVpc) || ($.eventName=DisableVpcClassicLink) || ($.eventName=EnableVpcClassicLink)}"
+          metricNamespace: LogMetrics
+          metricName: VPCChanges
+          metricValue: "1"
+  alarmSets:
+    - regions:
+        - *HOME_REGION
+      #####################################
+      # With landing zone version 3.0, AWS Control Tower now supports organization-level AWS CloudTrail trails.                                          #
+      # Going forward from landing zone 3.0, AWS Control Tower no longer will support account-level trails that AWS manages.                             #
+      # If your environment runs on prior version (3.0) of landing zone, you can change deployment targets for the metrics to Root organizational units  #
+      # Metrics deployment target should be management account for environment with landing zone version 3.0                                             #
+      # Please refer https://docs.aws.amazon.com/controltower/latest/userguide/2022-all.html#version-3.0 for more information                            #
+      #####################################
+      deploymentTargets:
+        accounts:
+          - Management
+      alarms:
+        # CIS 1.1 – Avoid the use of the "root" account
+        - alarmName: CIS-1.1-RootAccountUsage
+          alarmDescription: Alarm for usage of "root" account
+          snsTopicName: Security
+          metricName: RootAccountUsage
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Sum
+          threshold: 1
+          treatMissingData: notBreaching
+        # CIS 3.1 – Ensure a log metric filter and alarm exist for unauthorized API calls
+        - alarmName: CIS-3.1-UnauthorizedAPICalls
+          alarmDescription: Alarm for unauthorized API calls
+          snsTopicName: Security
+          metricName: UnauthorizedAPICalls
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Average
+          threshold: 5
+          treatMissingData: notBreaching
+        # CIS 3.2 – Ensure a log metric filter and alarm exist for AWS Management Console sign-in without MFA
+        - alarmName: CIS-3.2-ConsoleSigninWithoutMFA
+          alarmDescription: Alarm for AWS Management Console sign-in without MFA
+          snsTopicName: Security
+          metricName: ConsoleSigninWithoutMFA
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Sum
+          threshold: 1
+          treatMissingData: notBreaching
+        # CIS 3.3 – Ensure a log metric filter and alarm exist for usage of "root" account
+        - alarmName: CIS-3.3-RootAccountUsage
+          alarmDescription: Alarm for usage of "root" account
+          snsTopicName: Security
+          metricName: RootAccountUsage
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Sum
+          threshold: 1
+          treatMissingData: notBreaching
+        # CIS 3.4 – Ensure a log metric filter and alarm exist for IAM policy changes
+        - alarmName: CIS-3.4-IAMPolicyChanges
+          alarmDescription: Alarm for IAM policy changes
+          snsTopicName: Security
+          metricName: IAMPolicyChanges
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Average
+          threshold: 1
+          treatMissingData: notBreaching
+        # CIS 3.5 – Ensure a log metric filter and alarm exist for CloudTrail configuration changes
+        - alarmName: CIS-3.5-CloudTrailChanges
+          alarmDescription: Alarm for CloudTrail configuration changes
+          snsTopicName: Security
+          metricName: CloudTrailChanges
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Sum
+          threshold: 1
+          treatMissingData: notBreaching
+        # CIS 3.6 – Ensure a log metric filter and alarm exist for AWS Management Console authentication failures
+        - alarmName: CIS-3.6-ConsoleAuthenticationFailure
+          alarmDescription: Alarm exist for AWS Management Console authentication failures
+          snsTopicName: Security
+          metricName: ConsoleAuthenticationFailure
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Sum
+          threshold: 1
+          treatMissingData: notBreaching
+        # CIS 3.7 – Ensure a log metric filter and alarm exist for disabling or scheduled deletion of customer created CMKs
+        - alarmName: CIS-3.7-DisableOrDeleteCMK
+          alarmDescription: Alarm for disabling or scheduled deletion of customer created CMKs
+          snsTopicName: Security
+          metricName: DisableOrDeleteCMK
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Sum
+          threshold: 1
+          treatMissingData: notBreaching
+        # CIS 3.8 – Ensure a log metric filter and alarm exist for S3 bucket policy changes
+        - alarmName: CIS-3.8-S3BucketPolicyChanges.
+          alarmDescription: Alarm for S3 bucket policy changes
+          snsTopicName: Security
+          metricName: S3BucketPolicyChanges
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Average
+          threshold: 1
+          treatMissingData: notBreaching
+        # CIS 3.9 – Ensure a log metric filter and alarm exist for AWS Config configuration changes
+        - alarmName: CIS-3.9-AWSConfigChanges
+          alarmDescription: Alarm for AWS Config configuration changes
+          snsTopicName: Security
+          metricName: AWSConfigChanges
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Sum
+          threshold: 1
+          treatMissingData: notBreaching
+        # CIS 3.10 – Ensure a log metric filter and alarm exist for security group changes
+        - alarmName: CIS-3.10-SecurityGroupChanges
+          alarmDescription: Alarm for security group changes
+          snsTopicName: Security
+          metricName: SecurityGroupChanges
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Sum
+          threshold: 1
+          treatMissingData: notBreaching
+        # CIS 3.11 – Ensure a log metric filter and alarm exist for changes to Network Access Control Lists (NACL)
+        - alarmName: CIS-3.11-NetworkACLChanges
+          alarmDescription: Alarm for changes to Network Access Control Lists (NACL)
+          snsTopicName: Security
+          metricName: NetworkACLChanges
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Sum
+          threshold: 1
+          treatMissingData: notBreaching
+        # CIS 3.12 – Ensure a log metric filter and alarm exist for changes to network gateways
+        - alarmName: CIS-3.12-NetworkGatewayChanges
+          alarmDescription: Alarm for changes to network gateways
+          snsTopicName: Security
+          metricName: NetworkGatewayChanges
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Sum
+          threshold: 1
+          treatMissingData: notBreaching
+        # CIS 3.13 – Ensure a log metric filter and alarm exist for route table changes
+        - alarmName: CIS-3.13-RouteTableChanges
+          alarmDescription: Alarm for route table changes
+          snsTopicName: Security
+          metricName: RouteTableChanges
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Average
+          threshold: 1
+          treatMissingData: notBreaching
+        # CIS 3.14 – Ensure a log metric filter and alarm exist for VPC changes
+        - alarmName: CIS-3.14-VPCChanges
+          alarmDescription: Alarm for VPC changes
+          snsTopicName: Security
+          metricName: VPCChanges
+          namespace: LogMetrics
+          comparisonOperator: GreaterThanOrEqualToThreshold
+          evaluationPeriods: 1
+          period: 300
+          statistic: Sum
+          threshold: 1
+          treatMissingData: notBreaching
+keyManagementService:
+  keySets: []
+
+
+
+
+####################################################################
+####################################################################
+####################################################################
+ Overall Purpose:
+This file sets up core security controls and monitoring in a centralized and automated way to help your company enforce security best practices, meet compliance requirements (like NIST 800-53), and gain visibility into what's happening across all AWS accounts.
+
+🧩 Key Components and What They're Doing:
+1. homeRegion
+Defines the primary AWS region (GovCloud in your case: us-gov-west-1) where most centralized services will be deployed.
+
+2. centralSecurityServices
+delegatedAdminAccount: Audit
+Delegates control of security services like GuardDuty, SecurityHub, etc. to the "Audit" account.
+
+Security Features Enabled:
+
+EBS encryption by default for volumes.
+
+S3 Public Access Block to prevent accidental public exposure of data.
+
+SCP revert config to automatically revert unwanted changes to Service Control Policies.
+
+Macie, GuardDuty, SecurityHub: Enable or disable data protection, threat detection, and security posture visibility tools.
+
+SNS Subscriptions for sending alerts to different security-level email aliases.
+
+SSM Automations: Define a set of runbooks (SSM documents) to automate common security remediations (e.g., disabling SSH, enforcing encryption, attaching instance profiles).
+
+3. accessAnalyzer
+Enables IAM Access Analyzer to detect overly permissive IAM policies across your environment.
+
+4. iamPasswordPolicy
+Defines password strength and reuse requirements to enforce strong IAM password practices.
+
+5. awsConfig
+Enables AWS Config to track and evaluate changes to AWS resources.
+
+Adds custom rule sets to monitor compliance with security best practices and standards (e.g., S3 bucket policy grantee checks, encryption rules, etc.).
+
+6. cloudWatch
+Sets up log metric filters and CloudWatch alarms for security events.
+
+Monitors critical CIS benchmark controls like:
+
+Root account usage
+
+Unauthorized API calls
+
+Sign-ins without MFA
+
+IAM policy changes
+
+S3 bucket policy changes
+
+VPC, NACL, and gateway changes
+
+These are reported to a "Security" SNS topic to notify appropriate stakeholders when something suspicious or non-compliant happens.
+
+7. keyManagementService
+Placeholder (keySets: []) — this is where you could define KMS keys if needed, but it's currently empty.
+
+✅ Summary:
+This file configures security monitoring, compliance validation, and alerting across your AWS organization using:
+
+AWS native services (Config, CloudWatch, GuardDuty, SecurityHub, Macie)
+
+Centralized logging and alerts
+
+Automated remediation scripts via SSM
+
+Policy enforcement and best practices compliance (like NIST & CIS)
+
+Let me know if you want visual maps, diagrams, or an action plan to validate or customize any part of this file for your company.
+####################################################################
+####################################################################
+####################################################################

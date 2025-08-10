@@ -1,0 +1,234 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "IamSettingsStatement",
+      "Effect": "Deny",
+      "Action": [
+        "iam:DeleteAccountPasswordPolicy",         // Prevents deletion of account-level password policies
+        "iam:UpdateAccountPasswordPolicy",         // Prevents updates to password policy settings
+        "iam:CreateAccountAlias",                  // Prevents creation of account aliases
+        "iam:DeleteAccountAlias"                   // Prevents deletion of account aliases
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "IamRolesStatement",
+      "Effect": "Deny",
+      "Action": [
+        "iam:AttachRolePolicy",                    // Prevents policy attachment
+        "iam:CreateAccountAlias",                  // Prevents account alias creation
+        "iam:DeleteAccountAlias",                  // Prevents alias deletion
+        "iam:CreateUser",                          // Prevents IAM user creation
+        "iam:DeleteUser",                          // Prevents IAM user deletion
+        "iam:CreateRole",                          // Prevents role creation
+        "iam:DeleteRole",                          // Prevents role deletion
+        "iam:CreatePolicy",                        // Prevents policy creation
+        "iam:DeletePolicy",                        // Prevents policy deletion
+        "iam:DeleteRolePermissionsBoundary",       // Prevents permissions boundary removal
+        "iam:DeleteRolePolicy",                    // Prevents role policy deletion
+        "iam:DetachRolePolicy",                    // Prevents detaching role policies
+        "iam:PutRolePermissionsBoundary",          // Prevents setting permissions boundary
+        "iam:PutRolePolicy",                       // Prevents adding inline policies to roles
+        "iam:UpdateAssumeRolePolicy",              // Prevents updates to trust relationships
+        "iam:UpdateRole",                          // Prevents general role updates
+        "iam:UpdateRoleDescription"                // Prevents description updates
+      ],
+      "Resource": ["arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*"],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "GDSecHubServicesStatement",
+      "Effect": "Deny",
+      "Action": [
+        "guardduty:DeleteDetector",                // Prevents deleting GuardDuty detectors
+        "guardduty:DeleteMembers",
+        "guardduty:UpdateDetector",
+        "guardduty:StopMonitoringMembers",
+        "guardduty:Disassociate*",
+        "securityhub:BatchDisableStandards",       // Prevents disabling SecurityHub standards
+        "securityhub:DisableSecurityHub",
+        "securityhub:DeleteMembers",
+        "securityhub:Disassociate*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "MacieServiceStatement",
+      "Effect": "Deny",
+      "Action": [
+        "macie:AcceptInvitation",                  // Prevents changing Macie membership/invitation settings
+        "macie:CreateInvitations",
+        "macie:CreateMember",
+        "macie:DeclineInvitations",
+        "macie:DeleteInvitations",
+        "macie:DeleteMember",
+        "macie:DisableMacie",                      // Prevents disabling Macie
+        "macie:DisableOrganizationAdminAccount",
+        "macie:Disassociate*",
+        "macie:Enable*",
+        "macie:UpdateMacieSession",
+        "macie:UpdateMemberSession",
+        "macie:UpdateOrganizationConfiguration"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "CloudFormationStatement",
+      "Effect": "Deny",
+      "Action": ["cloudformation:Delete*"],         // Prevents deletion of CloudFormation stacks
+      "Resource": "arn:${PARTITION}:cloudformation:*:*:stack/${ACCELERATOR_PREFIX}-*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "PreventSSMModification",
+      "Effect": "Deny",
+      "Action": ["ssm:DeleteParameters"],          // Prevents deletion of SSM Parameter Store values
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "PreventCloudTrailModification",
+      "Effect": "Deny",
+      "Action": [
+        "cloudtrail:PutInsightSelectors",          // Prevents modification or deletion of CloudTrail config
+        "cloudtrail:PutEventSelectors",
+        "cloudtrail:StopLogging",
+        "cloudtrail:DeleteTrail",
+        "cloudtrail:UpdateTrail",
+        "cloudtrail:CreateTrail"
+      ],
+      "Resource": "arn:${PARTITION}:cloudtrail:*:*:trail/AWSAccelerator-*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    }
+  ]
+}
+
+#############################################################
+#############################################################
+#############################################################
+ Guardrails-2.json — Purpose
+This policy denies sensitive IAM and security service actions unless they are performed by trusted automation roles, such as:
+
+Accelerator deployment roles (${ACCELERATOR_PREFIX}-*)
+
+Management account role (${MANAGEMENT_ACCOUNT_ACCESS_ROLE})
+
+CDK deployment roles (cdk-accel-*)
+
+🔒 What does it restrict?
+1. IAM Account Settings
+Prevents anyone from updating or deleting password policies or account aliases unless authorized.
+
+Prevents:
+
+plaintext
+Copy
+Edit
+iam:UpdateAccountPasswordPolicy, iam:DeleteAccountPasswordPolicy
+iam:CreateAccountAlias, iam:DeleteAccountAlias
+2. IAM Role and User Management
+Blocks creation, deletion, or update of IAM roles, policies, and users related to the accelerator.
+
+Helps prevent privilege escalation or accidental deletion of automation-critical roles.
+
+3. GuardDuty & SecurityHub
+Prevents disabling or breaking GuardDuty or SecurityHub integrations:
+
+plaintext
+Copy
+Edit
+guardduty:DeleteDetector, securityhub:DisableSecurityHub, etc.
+4. Macie
+Blocks actions that would disable Macie or change its organizational settings.
+
+5. CloudFormation
+Prevents deletion of CloudFormation stacks created by the Accelerator.
+
+plaintext
+Copy
+Edit
+cloudformation:Delete*
+6. SSM Parameter Store
+Denies ssm:DeleteParameters to prevent loss of sensitive configuration.
+
+7. CloudTrail
+Prevents deletion or modification of CloudTrails associated with LZA:
+
+plaintext
+Copy
+Edit
+cloudtrail:StopLogging, DeleteTrail, UpdateTrail, etc.
+✅ Why this is important
+This policy ensures:
+
+Change protection for critical services like IAM, CloudTrail, and GuardDuty
+
+Compliance and audit readiness
+
+Security automation can't be tampered with
+
+Only authorized automation processes can manage sensitive infrastructure
+
+#############################################################
+#############################################################
+#############################################################

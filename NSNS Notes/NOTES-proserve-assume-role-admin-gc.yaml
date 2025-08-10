@@ -1,0 +1,48 @@
+Resources:                                                                            # This is the top-level CloudFormation section where you're defining all the AWS resources that will be created.
+  denyallpolicyEFC1154A:                                                              # A logical name for the IAM Managed Policy being created. This name is internal to CloudFormation.
+    Type: AWS::IAM::ManagedPolicy                                                     # Creating a custom managed IAM policy.
+    Properties:                                                                       # Defines the configuration of the policy.
+      PolicyDocument:                                                                 #
+        Statement:                                                                    #
+          - Action: "*"                                                               # Denies all actions (across all services).
+            Condition:                                                                #
+              DateGreaterThan:                                                        #
+                DateLessThan: "2025-10-31T00:00:00Z"                                  # This section is malformed. It's trying to say: "deny all access after October 31, 2024", but it incorrectly nests DateLessThan under DateGreaterThan. This likely causes the condition block to fail or be ignored.
+            Effect: Deny                                                              # Explicitly denies access.
+            Resource: "*"                                                             # Denies access to all resources.
+            Sid: DenyAllOnDate                                                        # A statement ID to label this statement.
+        Version: "2012-10-17"                                                         # Required version identifier for IAM policy syntax.
+      Description: Deny All Policy for proserve assume role                           # This policy’s intent is to auto-expire access after a certain date.
+      ManagedPolicyName: deny-all-policy                                              # The actual name of the policy in the AWS Console
+      Path: /                                                                         # Puts the policy at the root path. This is common for custom policies.
+  proserveRole0A45C0F0:                                                               #
+    Type: AWS::IAM::Role                                                              # You're creating an IAM Role.
+    Properties:                                                                       # Defines how the role behaves and who can assume it.
+      AssumeRolePolicyDocument:                                                       # Defines who can assume this role.
+        Statement:                                                                    #
+          - Action: sts:AssumeRole                                                    # This role can be assumed via STS.
+            Effect: Allow                                                             # Allow this assume-role action.
+            Principal:                                                                # The trusted entity—who can assume this role.  The AWS account ID is 420537567129, likely a ProServe account.  Fn::Join is a CloudFormation function used to build the full ARN dynamically.  It builds:
+              AWS:                                                                    #
+                Fn::Join:                                                             #
+                  - ""                                                                #
+                  - - "arn:"                                                          #
+                    - Ref: AWS::Partition                                             #
+                    - :iam::420537567129:root                                         #
+        Version: "2012-10-17"                                                         # Policy version format
+      Description: Role for Proserve Engineers to assume into customer accounts       # Plain-language explanation of the role’s purpose.
+      ManagedPolicyArns:                                                              # This is a list of policies attached to this role:
+        - Fn::Join:                                                                   #
+            - ""                                                                      #
+            - - "arn:"                                                                # This attaches the AWS AdministratorAccess managed policy to the role, giving full permissions.
+              - Ref: AWS::Partition                                                   #
+              - :iam::aws:policy/AdministratorAccess                                  #
+        - Ref: denyallpolicyEFC1154A                                                  # This attaches the custom deny-all-policy created earlier (as a safety catch).
+      MaxSessionDuration: 10800                                                       # This allows the assumed role session to last up to 3 hours (10,800 seconds).
+      RoleName: proserve-administrator-role                                           # This is the name that will appear in the IAM Console.
+    Metadata:                                                                         #
+      cdk_nag:                                                                        # This is not deployed, but used by tools like CDK Nag to suppress security warnings.
+        rules_to_suppress:                                                            #
+          - id: AwsSolutions-IAM4                                                     #
+            reason: cdk input is requesting use of AWS managed policies               #
+

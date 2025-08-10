@@ -1,0 +1,183 @@
+#################################################
+#################################################
+#################################################
+# 
+# 
+# This YAML defines an AWS CloudFormation stack that creates a customer-managed KMS key for AWS Control Tower and associates it with a KMS alias.
+# 
+# 🧭 Big Picture: What is this doing?
+# It creates a KMS (Key Management Service) key to be used for encrypting resources in AWS Control Tower, like:
+# 
+# CloudTrail logs
+# 
+# AWS Config data
+# 
+# Other shared resources deployed in LZA
+# 
+# This gives you full control over encryption, auditing, and key lifecycle, instead of relying on AWS-managed keys.
+# 
+# 🧱 Key Resources Defined
+# 1. KmsKeyForControlTower7296CB0A (KMS Key)
+# This is the actual customer-managed KMS key.
+# 
+# Key Policy gives permission to:
+# 
+# The account root (IAM users/roles in your account) for full access
+# 
+# CloudTrail and AWS Config services to encrypt/decrypt logs
+# 
+# Allow persistent grants for AWS services to attach to this key
+# 
+# Key settings:
+# 
+# EnableKeyRotation: true: Enables automatic annual key rotation
+# 
+# DeletionPolicy: Retain: Keeps the key even if the stack is deleted (safety measure)
+# 
+# 2. KmsKeyForControlTowerAliasD16C1ED3 (KMS Alias)
+# Creates an alias:
+# 
+# plaintext
+# Copy
+# Edit
+# alias/kms-key-for-control-tower
+# This makes it easier to refer to the key by name rather than full ARN — useful for referencing in CloudTrail, Config, or other services.
+# 
+# 🔐 Why is this important?
+# In environments like LZA (especially GovCloud or regulated workloads), managing your own KMS keys is a best practice for:
+# 
+# Audit control
+# 
+# Key rotation
+# 
+# Regulatory compliance (e.g., FedRAMP, ITAR)
+# 
+# Granular access control over encrypted data
+# 
+# ✅ Summary Table
+# Resource	Purpose
+# KMS Key	Customer-managed key for encrypting LZA data
+# Key Policy	Grants access to IAM, CloudTrail, Config
+# Key Rotation	Automatically rotates key annually
+# KMS Alias	Friendly name for easier reference
+# DeletionPolicy	Prevents accidental deletion of key
+
+#################################################
+#################################################
+#################################################
+
+
+
+
+Resources:
+  KmsKeyForControlTower7296CB0A:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Statement:
+          - Action: kms:*
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":iam::"
+                    - Ref: AWS::AccountId
+                    - :root
+            Resource: "*"
+            Sid: Enable IAM User Permissions
+          - Action:
+              - kms:CancelKeyDeletion
+              - kms:Create*
+              - kms:Delete*
+              - kms:Describe*
+              - kms:Disable*
+              - kms:Enable*
+              - kms:Get*
+              - kms:List*
+              - kms:Put*
+              - kms:Revoke*
+              - kms:ScheduleKeyDeletion
+              - kms:TagResource
+              - kms:UntagResource
+              - kms:Update*
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":iam::"
+                    - Ref: AWS::AccountId
+                    - :root
+            Resource: "*"
+            Sid: Allow access for Key Administrators
+          - Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+              - kms:Encrypt
+              - kms:GenerateDataKey*
+              - kms:ReEncrypt*
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":iam::"
+                    - Ref: AWS::AccountId
+                    - :root
+            Resource: "*"
+            Sid: Allow use of the key
+          - Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey*
+            Effect: Allow
+            Principal:
+              Service:
+                - cloudtrail.amazonaws.com
+                - config.amazonaws.com
+            Resource: "*"
+            Sid: Allow Cloudtrail and Config to encrypt/decrypt logs
+          - Action:
+              - kms:CreateGrant
+              - kms:ListGrants
+              - kms:RevokeGrant
+            Condition:
+              Bool:
+                kms:GrantIsForAWSResource: "true"
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":iam::"
+                    - Ref: AWS::AccountId
+                    - :root
+            Resource: "*"
+            Sid: Allow attachment of persistent resources
+        Version: "2012-10-17"
+      Description: KMS key for Control Tower Encryption
+      Enabled: true
+      EnableKeyRotation: true
+      Tags:
+        - Key: CreatedBy
+          Value: cdk
+        - Key: StackName
+          Value: CdkKmsForControlTowerStack
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  KmsKeyForControlTowerAliasD16C1ED3:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/kms-key-for-control-tower
+      TargetKeyId:
+        Fn::GetAtt:
+          - KmsKeyForControlTower7296CB0A
+          - Arn

@@ -1,0 +1,86 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyAllAWSServicesExceptBreakglassRoles",
+      "Effect": "Deny",
+      "Action": "*",  // Deny all AWS actions
+      "Resource": "*",  // Apply to all resources
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            // Exceptions: These roles are allowed to operate during quarantine
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",  // Main management role
+            "arn:${PARTITION}:iam::*:role/aws*",                               // Built-in AWS service roles (breakglass)
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}*",            // LZA-generated roles
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"                         // CDK deployment roles
+          ]
+        }
+      }
+    }
+  ]
+}
+
+
+
+
+
+
+
+
+###########################################################
+###########################################################
+###########################################################
+
+
+
+Purpose of the File
+To deny all actions in new accounts except for a limited set of approved roles (usually automation, deployment, and break-glass roles). This ensures:
+
+No one can make changes to a new account before the LZA pipeline has secured it.
+
+Prevents misconfigurations or unauthorized actions during provisioning.
+
+🔐 What it actually does
+Policy Details:
+json
+Copy
+Edit
+"Action": "*"
+"Effect": "Deny"
+"Resource": "*"
+➤ This denies all actions on all resources by default.
+
+🚪 Exceptions (roles that are allowed):
+The "ArnNotLike" block defines the only roles that are allowed to do anything during quarantine:
+
+${MANAGEMENT_ACCOUNT_ACCESS_ROLE}
+→ The main role used by administrators in the management account.
+
+aws*
+→ AWS-managed service-linked roles (like for AWS Config, GuardDuty, etc.) — this avoids breaking automated AWS services.
+
+${ACCELERATOR_PREFIX}*
+→ Automation roles created by LZA (e.g., deployment, logging, governance).
+
+cdk-accel-*
+→ CDK deployment roles, typically used by the LZA CodePipeline or infrastructure-as-code tools.
+
+✅ Why this matters
+✅ Benefit	🔒 What it protects against
+Ensures automation has time to configure	Premature manual access or accidental changes
+Blocks users until controls are in place	Security misconfiguration
+Helps enforce LZA baseline deployments	Skipped controls, logging, SCPs, tagging, etc.
+
+🔄 How it works with LZA
+A new account is created.
+
+The quarantine.json SCP is applied immediately.
+
+The LZA deployment pipeline (which uses authorized roles) runs to configure the account.
+
+After successful setup, the quarantine SCP can be removed or replaced with normal guardrails.
+
+###########################################################
+###########################################################
+###########################################################

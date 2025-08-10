@@ -1,0 +1,145 @@
+=== Step 7: Configure global-config.yaml
+
+
+The next steps now start configuring the Landing Zone using the LZA configuration files.   These steps assume that you have downloaded the configuration files from the S3 bucket and unzipped the configuration files.  The configuration files can be found in S3 in a bucket named with the following pattern: *aws-accelerator-ACCOUNT_ID-REGION*. They are located in a folder called zipped with the filename aws-accelerator-config.zip.  For the instruction below, we will be using dot notation to emphasize yaml paths. Each dot of the following example represents a new line and would be indented when converted to YAML.  For example,
+
+*logging.cloudtrail.enable: true*, would be written in YAML as:
+
+[source,yaml]
+----
+logging:
+    cloudtrail:
+        enable: true
+----
+
+==== Start Configuration
+[start=1]
+. Open *global-config.yaml*
+. After the line *terminationProtection: true* insert
+
+[source,yaml]
+----
+snsTopics:
+  deploymentTargets:
+    organizationalUnits:
+      - Root
+  topics:
+    - name: Security
+      emailAddresses:
+        - SECURITY_EMAIL_ADDRESS
+----
+
+[start=3]
+. Change *EMAIL_ADDRESS* to the email that should receive security alerts
+. Set *logging.cloudtrail.enable* to *true*
+. Set *logging.cloudtrail.organizationalTrail* to *true*
+. Change *logging.sessionManager.sendToCloudWatchLogs* to *true*
+. For *sessionManager.attachPolicyToIamRoles*, remove the *[ ]* and press enter
+. Add the following on the next line: *- EC2-Default-SSM-Instance-Role*
+. Add a configuration for *logging.cloudwatchLogs* with the following:
+
+[source,yaml]
+----
+cloudwatchLogs:
+    dynamicPartitioning: dynamic-partitioning/log-filters.json
+----
+
+[start=10]
+. Add the following under *logging*:
+
+[source,yaml]
+----
+  accessLogBucket:
+    lifecycleRules:
+      - enabled: true
+        abortIncompleteMultipartUpload: 7
+        expiration: 1000
+        noncurrentVersionExpiration: 1000
+        transitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+        noncurrentVersionTransitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+  centralLogBucket:
+    s3ResourcePolicyAttachments:
+      - policy: bucket-policies/central-log-bucket.json
+    lifecycleRules:
+      - enabled: true
+        abortIncompleteMultipartUpload: 7
+        expiration: 1000
+        noncurrentVersionExpiration: 1000
+        transitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+        noncurrentVersionTransitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+  elbLogBucket:
+    lifecycleRules:
+      - enabled: true
+        abortIncompleteMultipartUpload: 7
+        expiration: 1000
+        noncurrentVersionExpiration: 1000
+        transitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+        noncurrentVersionTransitions:
+          - storageClass: GLACIER_IR
+            transitionAfter: 365
+----
+
+[start=11]
+. Add the following configuration for *backup*
+
+[source,yaml]
+----
+backup:
+  vaults:
+    - name: BackupVault
+      deploymentTargets:
+        organizationalUnits:
+          - Root
+----
+
+[start=12]
+. Create the file *dynamic-partitioning/log-filters.json* and paste the following contents in the file:
+
+[source,json]
+----
+[
+    { "logGroupPattern": "/AWSAccelerator-SecurityHub", "s3Prefix": "security-hub" }
+]
+----
+
+[start=13]
+. Create the file *bucket-policies/central-log-bucket.json* and paste the following contents in the file:
+
+[source,json]
+----
+{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "Allow Organization principals to put session manager logs",
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": "*"
+        },
+        "Action": "s3:PutObject",
+        "Resource": "arn:${PARTITION}:s3:::${ACCELERATOR_CENTRAL_LOGS_BUCKET_NAME}/*",
+        "Condition": {
+          "StringEquals": {
+            "aws:PrincipalOrgID": "${ORG_ID}"
+          },
+          "ArnLike": {
+            "aws:PrincipalARN": "arn:${PARTITION}:iam::*:role/EC2-Default-SSM-AD-Role"
+          }
+        }
+      }
+    ]
+  }
+----
+
+[start=14]
+. Save and close the file. There are dependencies to the iam-config.yaml file so do not push the changes and run the pipeline. Continue to the next section to update the *iam-config.yaml*.

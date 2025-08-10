@@ -1,0 +1,50 @@
+description: IAM Role Policy                      # Description of the automation document
+schemaVersion: "0.3"                              # Version of the document schema
+assumeRole: "{{ AutomationAssumeRole }}"          # Role to assume to run the automation
+parameters:                                       # Inputs expected from the user or pipeline
+  ResourceId:                                     # IAM Role resource identifier
+    type: String
+  AWSManagedPolicies:                             # List of AWS managed policy names to attach
+    type: StringList
+  CustomerManagedPolicies:                        # List of customer managed policy ARNs to attach
+    type: StringList
+    minItems: 0
+    default: []
+  AutomationAssumeRole:                           # IAM Role ARN the automation will assume
+    type: String
+mainSteps:
+  - name: attachPolicy                            # Main step name
+    action: "aws:executeScript"                   # Executes a Python script via automation
+    inputs:
+      Runtime: python3.7
+      Handler: script_handler
+      Script: |-                                  # Embedded Python script for IAM policy attachment
+        import boto3
+        partition = boto3.client("sts").get_caller_identity()['Arn'].split(":")[1]  # Get the AWS partition (e.g., aws or aws-us-gov)
+        iam = boto3.client("iam")
+        config = boto3.client("config")
+        def script_handler(events, context):
+          resource_id = events["ResourceId"]       # IAM Role ID
+          response = config.batch_get_resource_config(
+            resourceKeys=[{
+              'resourceType': 'AWS::IAM::Role',
+              'resourceId': resource_id
+            }]
+          )
+          role_name = response["baseConfigurationItems"][0]['resourceName']  # Resolve name from config data
+          aws_policy_names = events["AWSManagedPolicies"]
+          customer_policy_names = events["CustomerManagedPolicies"]
+          for policy in aws_policy_names:          # Attach AWS managed policies
+            iam.attach_role_policy(
+              PolicyArn="arn:%s:iam::aws:policy/%s" %(partition, policy),
+              RoleName=role_name
+            )
+          for policy in customer_policy_names:     # Attach customer managed policies
+            iam.attach_role_policy(
+              PolicyArn=policy,
+              RoleName=role_name
+            )
+      InputPayload:                                # Variables passed into the script
+        ResourceId: "{{ ResourceId }}"
+        AWSManagedPolicies: "{{ AWSManagedPolicies }}"
+        CustomerManagedPolicies: "{{ CustomerManagedPolicies }}"

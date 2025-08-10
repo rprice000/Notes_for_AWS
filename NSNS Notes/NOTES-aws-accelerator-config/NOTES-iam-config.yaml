@@ -1,0 +1,102 @@
+providers: []  # (Optional) Used for specifying external identity or credential providers; currently empty
+
+# Defines reusable sets of IAM permission boundaries
+policySets:
+  - deploymentTargets:
+      organizationalUnits:
+        - Root  # Applies the policy to all accounts in the Root OU
+    policies:
+      - name: Default-Boundary-Policy  # Name of the permission boundary
+        policy: iam-policies/boundary-policy.json  # Path to the boundary policy JSON file
+
+# Defines reusable IAM role definitions to be deployed
+roleSets:
+  - deploymentTargets:
+      organizationalUnits:
+        - Root  # Applies these roles to all accounts in the Root OU
+    roles:
+      - name: EC2-Default-SSM-Instance-Role  # IAM role name for EC2 instances using SSM
+        instanceProfile: true  # Indicates this role should be associated with an EC2 instance profile
+        assumedBy:
+          - type: service
+            principal: ec2.amazonaws.com  # EC2 service will assume this role
+        policies:
+          awsManaged:
+            - AmazonSSMManagedInstanceCore         # Allows SSM management of EC2
+            - AmazonSSMDirectoryServiceAccess      # Directory service access for EC2 (if needed)
+            - CloudWatchAgentServerPolicy          # Enables the CloudWatch Agent on the instance
+
+      - name: Backup-Role  # IAM role used by AWS Backup service
+        assumedBy:
+          - type: service
+            principal: backup.amazonaws.com  # Backup service will assume this role
+        policies:
+          awsManaged:
+            - service-role/AWSBackupServiceRolePolicyForBackup   # Permissions for taking backups
+            - service-role/AWSBackupServiceRolePolicyForRestores # Permissions for performing restores
+
+# Defines IAM Identity Center (SSO) groups and their policies
+groupSets:
+  - deploymentTargets:
+      organizationalUnits:
+        - Root  # Applies to all accounts in the Root OU
+    groups:
+      - name: Administrators
+        policies:
+          awsManaged:
+            - AdministratorAccess  # Full admin access for users in this group
+
+# (Optional) IAM Identity Center (SSO) user assignments; currently empty
+userSets: []
+
+
+
+
+####################################################################
+####################################################################
+####################################################################
+ Creates roles for AWS services to assume in your accounts:
+EC2-Default-SSM-Instance-Role
+
+For EC2 instances so they can be managed via AWS Systems Manager (SSM).
+
+Grants:
+
+SSM core capabilities (session manager, patching, automation)
+
+Access to AWS Directory Service (if you're using it)
+
+CloudWatch logging/monitoring agent permissions
+
+Marked with instanceProfile: true, so it's attached to EC2 instances automatically.
+
+Backup-Role
+
+Assumed by the AWS Backup service.
+
+Grants:
+
+Permissions to run backups
+
+Permissions to restore data
+
+Required if you're enabling AWS Backup vaults/policies through LZA.
+
+🧩 Where are these roles deployed?
+They're applied to all accounts in the Root OU, unless you scope them more narrowly.
+
+This means every account under that OU will have:
+
+The EC2 SSM role available for use
+
+The Backup role available for AWS Backup service jobs
+
+🔐 And what's the purpose of this?
+Gives you a consistent, secure baseline across all accounts
+
+Ensures workloads (like EC2 or Backup) have the least privilege they need
+
+Makes sure LZA can deploy and manage resources predictably
+####################################################################
+####################################################################
+####################################################################

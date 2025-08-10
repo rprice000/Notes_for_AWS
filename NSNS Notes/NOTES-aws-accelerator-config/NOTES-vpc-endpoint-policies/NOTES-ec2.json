@@ -1,0 +1,14 @@
+{
+  "Statement": [
+    {
+      "Effect": "Allow",       // Grants permission
+      "Principal": "*",        // Applies to all IAM principals (users, roles, services)
+      "Action": "ec2:*",       // Allows all EC2 service actions (e.g., DescribeInstances, StartInstances)
+      "Resource": "*"          // Applies to all EC2 resources
+    }
+  ]
+}
+// NOTE:
+// This is a very permissive policy for EC2 VPC interface endpoints.
+// It allows unrestricted access to EC2 API actions through the endpoint.
+// Consider replacing this with a scoped policy limiting access to specific roles, actions, and conditions.

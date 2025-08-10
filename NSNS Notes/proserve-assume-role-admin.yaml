@@ -1,0 +1,48 @@
+Resources:
+  denyallpolicyEFC1154A:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: "*"
+            Condition:
+              DateGreaterThan:
+                DateLessThan: "2025-10-31T00:00:00Z"
+            Effect: Deny
+            Resource: "*"
+            Sid: DenyAllOnDate
+        Version: "2012-10-17"
+      Description: Deny All Policy for proserve assume role
+      ManagedPolicyName: deny-all-policy
+      Path: /
+  proserveRole0A45C0F0:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - :iam::676486052569:root
+        Version: "2012-10-17"
+      Description: Role for Proserve Engineers to assume into customer accounts
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AdministratorAccess
+        - Ref: denyallpolicyEFC1154A
+      MaxSessionDuration: 10800
+      RoleName: proserve-administrator-role
+    Metadata:
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-IAM4
+            reason: cdk input is requesting use of AWS managed policies
+

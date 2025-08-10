@@ -1,0 +1,89 @@
+{
+  "Statement": [
+    {
+      "Effect": "Allow",       // Grants permission
+      "Principal": "*",        // Applies to all users, roles, services (very permissive)
+      "Action": "*",           // Allows all actions (e.g., ec2:*, s3:*, etc.)
+      "Resource": "*"          // Applies to all AWS resources
+    }
+  ]
+}
+// NOTE:
+// This is a highly permissive VPC endpoint policy often used as a default.
+// In production, consider replacing it with a scoped policy that restricts
+// access to specific principals and actions to meet security requirements.
+
+
+
+
+##########################################################
+##########################################################
+##########################################################
+
+
+
+  This file — default.json — appears to be a very permissive VPC endpoint policy, likely used as a placeholder or default configuration in the LZA VPC endpoint policy system.
+
+🔍 What does this file do?
+Here’s the content:
+
+json
+Copy
+Edit
+{
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "*",
+      "Resource": "*"
+    }
+  ]
+}
+🧭 Explanation:
+"Effect": "Allow" – grants access
+
+"Principal": "*" – allows any identity (IAM user, role, service, etc.)
+
+"Action": "*" – allows all actions
+
+"Resource": "*" – applies to all resources
+
+✅ In a VPC endpoint context, this means:
+This policy:
+
+Allows any principal to perform any action on any resource through the VPC interface endpoint
+
+Effectively removes access restrictions
+
+🔐 Why this exists in LZA
+It's likely a default fallback policy for VPC interface endpoints (e.g., for EC2, SSM, STS, etc.)
+
+It ensures functionality when no custom policies are applied yet
+
+It is not meant to be secure — just to allow service access during initial setup
+
+⚠️ Security Note
+This is not safe for production unless intentionally scoped. You should:
+
+Replace it with tight VPC endpoint policies that:
+
+Allow only specific IAM principals
+
+Limit actions (e.g., ec2:DescribeInstances)
+
+Match your organization’s security requirements
+
+✅ Summary
+Field	Value	Meaning
+Effect	Allow	Grants permission
+Principal	*	To anyone/everyone
+Action	*	For all actions
+Resource	*	On all resources
+
+Use Case: Likely used during LZA setup as a permissive default VPC endpoint policy
+
+
+##########################################################
+##########################################################
+##########################################################

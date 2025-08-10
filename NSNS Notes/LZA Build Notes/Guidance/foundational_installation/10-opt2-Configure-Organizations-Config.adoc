@@ -1,0 +1,390 @@
+=== Configure organizations-config.yaml
+
+[start=1]
+. Create the file *service-control-policies/guardrails-1.json* and paste the following contents:
+
+[source,json]
+----
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ConfigRulesStatement",
+      "Effect": "Deny",
+      "Action": [
+        "config:PutConfigRule",
+        "config:DeleteConfigRule",
+        "config:DeleteEvaluationResults",
+        "config:DeleteConfigurationAggregator",
+        "config:PutConfigurationAggregator"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "LambdaStatement",
+      "Effect": "Deny",
+      "Action": [
+        "lambda:AddPermission",
+        "lambda:CreateEventSourceMapping",
+        "lambda:CreateFunction",
+        "lambda:DeleteEventSourceMapping",
+        "lambda:DeleteFunction",
+        "lambda:DeleteFunctionConcurrency",
+        "lambda:PutFunctionConcurrency",
+        "lambda:RemovePermission",
+        "lambda:UpdateEventSourceMapping",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration"
+      ],
+      "Resource": "arn:${PARTITION}:lambda:*:*:function:${ACCELERATOR_PREFIX}-*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "SnsStatement",
+      "Effect": "Deny",
+      "Action": [
+        "sns:AddPermission",
+        "sns:CreateTopic",
+        "sns:DeleteTopic",
+        "sns:RemovePermission",
+        "sns:SetTopicAttributes",
+        "sns:Subscribe",
+        "sns:Unsubscribe"
+      ],
+      "Resource": "arn:${PARTITION}:sns:*:*:aws-accelerator-*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "EbsEncryptionStatement",
+      "Effect": "Deny",
+      "Action": ["ec2:DisableEbsEncryptionByDefault"],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "PreventCloudWatchLogsModification",
+      "Effect": "Deny",
+      "Action": [
+        "logs:DisassociateKmsKey",
+        "logs:DeleteLogGroup",
+        "logs:DeleteRetentionPolicy",
+        "logs:AssociateKmsKey",
+        "logs:PutRetentionPolicy",
+        "logs:CreateLogGroup"
+      ],
+      "Resource": [
+        "arn:${PARTITION}:logs:*:*:log-group:aws-accelerator-*",
+        "arn:${PARTITION}:logs:*:*:log-group:/aws/lambda/AWSAccelerator-*"
+      ],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "PreventCloudWatchLogStreamModification",
+      "Effect": "Deny",
+      "Action": ["logs:DeleteLogStream"],
+      "Resource": [
+        "arn:${PARTITION}:logs:*:*:log-group:aws-accelerator-*:log-stream:*",
+        "arn:${PARTITION}:logs:*:*:log-group:/aws/lambda/AWSAccelerator-*:log-stream:*"
+      ],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    }
+  ]
+}
+----
+
+[start=2]
+. Create the file *service-control-policies/guardrails-2.json* and paste the following contents:
+
+[source,json]
+----
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "IamSettingsStatement",
+      "Effect": "Deny",
+      "Action": [
+        "iam:DeleteAccountPasswordPolicy",
+        "iam:UpdateAccountPasswordPolicy",
+        "iam:CreateAccountAlias",
+        "iam:DeleteAccountAlias"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "IamRolesStatement",
+      "Effect": "Deny",
+      "Action": [
+        "iam:AttachRolePolicy",
+        "iam:CreateAccountAlias",
+        "iam:DeleteAccountAlias",
+        "iam:CreateUser",
+        "iam:DeleteUser",
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:CreatePolicy",
+        "iam:DeletePolicy",
+        "iam:DeleteRolePermissionsBoundary",
+        "iam:DeleteRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:PutRolePermissionsBoundary",
+        "iam:PutRolePolicy",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:UpdateRole",
+        "iam:UpdateRoleDescription"
+      ],
+      "Resource": ["arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*"],
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "GDSecHubServicesStatement",
+      "Effect": "Deny",
+      "Action": [
+        "guardduty:DeleteDetector",
+        "guardduty:DeleteMembers",
+        "guardduty:UpdateDetector",
+        "guardduty:StopMonitoringMembers",
+        "guardduty:Disassociate*",
+        "securityhub:BatchDisableStandards",
+        "securityhub:DisableSecurityHub",
+        "securityhub:DeleteMembers",
+        "securityhub:Disassociate*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "MacieServiceStatement",
+      "Effect": "Deny",
+      "Action": [
+        "macie:AcceptInvitation",
+        "macie:CreateInvitations",
+        "macie:CreateMember",
+        "macie:DeclineInvitations",
+        "macie:DeleteInvitations",
+        "macie:DeleteMember",
+        "macie:DisableMacie",
+        "macie:DisableOrganizationAdminAccount",
+        "macie:Disassociate*",
+        "macie:Enable*",
+        "macie:UpdateMacieSession",
+        "macie:UpdateMemberSession",
+        "macie:UpdateOrganizationConfiguration"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "CloudFormationStatement",
+      "Effect": "Deny",
+      "Action": ["cloudformation:Delete*"],
+      "Resource": "arn:${PARTITION}:cloudformation:*:*:stack/${ACCELERATOR_PREFIX}-*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "PreventSSMModification",
+      "Effect": "Deny",
+      "Action": ["ssm:DeleteParameters"],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "PreventCloudTrailModification",
+      "Effect": "Deny",
+      "Action": [
+        "cloudtrail:PutInsightSelectors",
+        "cloudtrail:PutEventSelectors",
+        "cloudtrail:StopLogging",
+        "cloudtrail:DeleteTrail",
+        "cloudtrail:UpdateTrail",
+        "cloudtrail:CreateTrail"
+      ],
+      "Resource": "arn:${PARTITION}:cloudtrail:*:*:trail/AWSAccelerator-*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}-*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    }
+  ]
+}
+----
+[start=3]
+. Create the file *service-control-policies/quarantine.json* and paste the following content:
+[source,json]
+----
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyAllAWSServicesExceptBreakglassRoles",
+      "Effect": "Deny",
+      "Action": "*",
+      "Resource": "*",
+      "Condition": {
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+            "arn:${PARTITION}:iam::*:role/aws*",
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}*",
+            "arn:${PARTITION}:iam::*:role/cdk-accel-*"
+          ]
+        }
+      }
+    }
+  ]
+}
+----
+[start=4]
+. Open the *organization-config.yaml* file
+. Replace everything from *serviceControlPolicies: []* down with the following:
+[source,yaml]
+----
+quarantineNewAccounts:
+  enable: true
+  scpPolicyName: Quarantine
+serviceControlPolicies:
+- name: AcceleratorGuardrails1
+  description: >
+    Accelerator GuardRails 1
+  policy: service-control-policies/guardrails-1.json
+  type: customerManaged
+  deploymentTargets:
+    organizationalUnits:
+      - Infrastructure
+- name: AcceleratorGuardrails2
+  description: >
+    Accelerator GuardRails 2
+  policy: service-control-policies/guardrails-2.json
+  type: customerManaged
+  deploymentTargets:
+    organizationalUnits:
+      - Infrastructure
+- name: Quarantine
+  description: >
+    This SCP is used to prevent changes to new accounts until the Accelerator
+    has been executed successfully.
+    This policy will be applied upon account creation if enabled.
+  policy: service-control-policies/quarantine.json
+  type: customerManaged
+  deploymentTargets:
+    organizationalUnits: [ ]
+# Although GovCloud does support tagging policies, LZA does not yet support implementing it.
+# The tagging policy is implemented at  the Organization level in the console.
+# The tagging policy is included in the tagging-policies directory for when LZA is updated to support it.
+taggingPolicies: []
+chatbotPolicies: []
+backupPolicies: []
+----
+[start=6]
+. Save the file
+. Zip the files in the configuration directory. You can do this by running: zip -r aws-accelerator-config.zip. If you want to exclude any directories or files, use the -x option. For example, to exclude the JetBrains IDE configuration *zip -r aws-accelerator-config.zip . -x .idea* would exclude the .idea directory.
+. Once the zip file is created, upload it to the same S3 bucket from which you originally downloaded it from
+. Log in to the management account
+. Open the *CodePipeline*
+. Select the *AWSAccelerator-Pipeline*
+. Select *Release change*
+
+Monitor the inbox of the email addresses configured for the security alerts. Check for Subscription Confirmation emails and confirm the subscriptions.

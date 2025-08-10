@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Allow Organization principals to put session manager logs",
+      "Effect": "Allow",  // Grants permission to write logs
+      "Principal": {
+        "AWS": "*"         // Applies to any AWS principal
+      },
+      "Action": "s3:PutObject",  // Allows writing objects (e.g., logs) to S3
+      "Resource": "arn:${PARTITION}:s3:::${ACCELERATOR_CENTRAL_LOGS_BUCKET_NAME}/*",  // Applies to all objects in the central log bucket
+      "Condition": {
+        "StringEquals": {
+          "aws:PrincipalOrgID": "${ORG_ID}"  // Restricts access to principals from your AWS Organization only
+        },
+        "ArnLike": {
+          "aws:PrincipalARN": "arn:${PARTITION}:iam::*:role/EC2-Default-SSM-AD-Role"  // Only this role is allowed to send logs
+        }
+      }
+    }
+  ]
+}
+// NOTE:
+// This S3 bucket policy allows EC2 instances using the 'EC2-Default-SSM-AD-Role' IAM role
+// within your AWS Organization to write Session Manager logs to the central logging bucket.
+// It's a scoped and secure policy for centralized log collection.

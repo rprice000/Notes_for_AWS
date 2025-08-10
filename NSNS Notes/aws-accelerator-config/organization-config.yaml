@@ -1,0 +1,49 @@
+enable: true
+organizationalUnits:
+  - name: Security
+  - name: Infrastructure
+  - name: LZA-Lab
+  - name: Sandbox
+    ignore: true
+  - name: Appsys
+    ignore: true
+  - name: Appsys/Appsys01
+    ignore: true
+  - name: Appsys/Appsys02
+    ignore: true
+# added quarantine OU to allow for quarantine SCP to be applied
+quarantineNewAccounts:
+  enable: true
+  scpPolicyName: Quarantine
+serviceControlPolicies:
+- name: AcceleratorGuardrails1
+  description: >
+    Accelerator GuardRails 1
+  policy: service-control-policies/guardrails-1.json
+  type: customerManaged
+  deploymentTargets:
+    organizationalUnits:
+      - Infrastructure
+- name: AcceleratorGuardrails2
+  description: >
+    Accelerator GuardRails 2
+  policy: service-control-policies/guardrails-2.json
+  type: customerManaged
+  deploymentTargets:
+    organizationalUnits:
+      - Infrastructure
+- name: Quarantine
+  description: >
+    This SCP is used to prevent changes to new accounts until the Accelerator
+    has been executed successfully.
+    This policy will be applied upon account creation if enabled.
+  policy: service-control-policies/quarantine.json
+  type: customerManaged
+  deploymentTargets:
+    organizationalUnits: [ ]
+# Although GovCloud does support tagging policies, LZA does not yet support implementing it.
+# The tagging policy is implemented at  the Organization level in the console.
+# The tagging policy is included in the tagging-policies directory for when LZA is updated to support it.
+taggingPolicies: []
+chatbotPolicies: []
+backupPolicies: []

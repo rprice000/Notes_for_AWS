@@ -1,0 +1,55 @@
+# Enables access logging on an Elastic Load Balancer (ELB) using SSM Automation
+description: Enable logging on Elastic Load-Balancer
+
+# The schema version for the SSM document format
+schemaVersion: "0.3"
+
+# IAM role that Automation will assume to run the steps
+assumeRole: "{{ AutomationAssumeRole }}"
+
+# Parameters required for the automation document
+parameters:
+  LogDestination:
+    type: String       # The S3 bucket name where ELB logs will be stored
+  LoadBalancerArn:
+    type: String       # The ARN of the Load Balancer
+  AutomationAssumeRole:
+    type: String       # IAM role ARN that the automation will assume
+
+# Main execution steps
+mainSteps:
+  - name: getAccount
+    action: "aws:executeAwsApi"
+    inputs:
+      Service: sts
+      Api: get_caller_identity  # Retrieves the account ID of the caller
+    outputs:
+      - Name: Id
+        Selector: $.Account
+        Type: String
+
+  - name: getLoadBalancer
+    action: "aws:executeAwsApi"
+    inputs:
+      Service: elbv2
+      Api: describe_load_balancers  # Gets info about the load balancer from its ARN
+      LoadBalancerArns:
+        - "{{ LoadBalancerArn }}"
+    outputs:
+      - Name: Name
+        Selector: $.LoadBalancers[0].LoadBalancerName
+        Type: String
+
+  - name: enableLogging
+    action: "aws:executeAwsApi"
+    inputs:
+      Service: elbv2
+      Api: modify_load_balancer_attributes  # Enables logging by modifying ELB attributes
+      LoadBalancerArn: "{{ LoadBalancerArn }}"
+      Attributes:
+        - Key: access_logs.s3.enabled
+          Value: "true"
+        - Key: access_logs.s3.bucket
+          Value: "{{ LogDestination }}"
+        - Key: access_logs.s3.prefix
+          Value: "{{ getAccount.Id }}/elb-{{ getLoadBalancer.Name }}"
